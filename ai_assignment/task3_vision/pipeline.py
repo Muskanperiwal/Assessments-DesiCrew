@@ -342,6 +342,8 @@ def _get_reference_data_for_document(filename: str, pil_img: Optional[Image.Imag
 # Gemini Multimodal Vision Extraction Logic
 # ==============================================================================
 
+_QUOTA_EXHAUSTED_UNTIL: Dict[str, float] = {}
+
 def call_gemini_vision(pil_image: Image.Image, filename: str = "") -> Dict[str, Any]:
     """Invokes Google Gemini with structured output requirements.
 
@@ -349,6 +351,8 @@ def call_gemini_vision(pil_image: Image.Image, filename: str = "") -> Dict[str, 
     Falls back gracefully to high-precision reference extraction if the
     external API quota is exhausted.
     """
+    import time
+
     api_keys = getattr(settings, "GEMINI_API_KEYS", [])
     single_key = getattr(settings, "GEMINI_API_KEY", "")
     if single_key and single_key not in api_keys:
@@ -378,9 +382,14 @@ def call_gemini_vision(pil_image: Image.Image, filename: str = "") -> Dict[str, 
     )
 
     last_error = None
+    now = time.time()
 
     if HAS_GENAI and api_keys:
         for key_idx, api_key in enumerate(api_keys):
+            # Skip keys known to be quota-exhausted in the last 2 minutes
+            if now < _QUOTA_EXHAUSTED_UNTIL.get(api_key, 0):
+                continue
+
             try:
                 genai.configure(api_key=api_key)
             except Exception as conf_err:
@@ -394,7 +403,10 @@ def call_gemini_vision(pil_image: Image.Image, filename: str = "") -> Dict[str, 
                         system_instruction=SYSTEM_INSTRUCTION,
                         generation_config={"response_mime_type": "application/json"}
                     )
-                    response = model.generate_content([pil_image, extraction_prompt])
+                    response = model.generate_content(
+                        [pil_image, extraction_prompt],
+                        request_options={"timeout": 12}
+                    )
                     
                     if response and response.text:
                         raw_text = response.text.strip()
@@ -414,7 +426,8 @@ def call_gemini_vision(pil_image: Image.Image, filename: str = "") -> Dict[str, 
                         # Model name deprecated or unsupported, try next model
                         continue
                     elif "429" in err_msg or "quota" in err_msg.lower():
-                        # Key quota exhausted, break out of model loop to try next key
+                        # Key quota exhausted, remember for 2 minutes and break out to next key
+                        _QUOTA_EXHAUSTED_UNTIL[api_key] = time.time() + 120
                         logger.warning("Gemini API key #%d hit quota (429). Rotating to next key...", key_idx)
                         break
                     else:

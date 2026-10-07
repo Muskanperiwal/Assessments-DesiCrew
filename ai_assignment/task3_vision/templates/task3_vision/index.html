@@ -3,246 +3,221 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Task 3 | Multimodal Document Extraction & Quality Flagging</title>
-    <!-- Tailwind CSS -->
+    <title>Document scan · Task 3</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    {% include 'partials/app_theme.html' %}
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.72);
+            --text-primary: #17181c;
+            --text-secondary: #4b5563;
+            --text-muted: #6b7280;
+            --surface: #e8eaef;
+            --accent: #0d9488;
+            --accent-soft: rgba(13, 148, 136, 0.14);
+            --blur: 18px;
+            --warn: #b45309;
+            --ok: #047857;
+        }
+        body { font-family: 'Inter', sans-serif; color: var(--text-primary); }
         code, pre { font-family: 'JetBrains Mono', monospace; }
-        .dragover { border-color: #8b5cf6 !important; background-color: rgba(139, 92, 246, 0.1) !important; }
+        .app-bg {
+            background:
+                radial-gradient(ellipse 70% 55% at 10% -5%, rgba(13, 148, 136, 0.09), transparent 55%),
+                radial-gradient(ellipse 50% 45% at 95% 100%, rgba(99, 102, 241, 0.06), transparent 50%),
+                linear-gradient(165deg, #eef0f4 0%, #e4e7ee 45%, #eceef3 100%);
+            min-height: 100vh;
+        }
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--blur));
+            -webkit-backdrop-filter: blur(var(--blur));
+            border: 1px solid rgba(255, 255, 255, 0.65);
+            box-shadow: 0 8px 32px rgba(15, 23, 42, 0.06);
+        }
+        .glass-inset {
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        .glass-bar {
+            background: rgba(255, 255, 255, 0.78);
+            backdrop-filter: blur(var(--blur));
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        }
+        #dropZone.dragover {
+            border-color: var(--accent) !important;
+            background: var(--accent-soft) !important;
+        }
+        .sample-chip {
+            background: rgba(255, 255, 255, 0.65);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            color: var(--text-secondary);
+        }
+        .sample-chip:hover {
+            background: #fff;
+            border-color: rgba(13, 148, 136, 0.35);
+            color: var(--text-primary);
+        }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+        .data-table th {
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-muted);
+            padding: 0.5rem 0.65rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+            background: rgba(0, 0, 0, 0.03);
+        }
+        .data-table td {
+            padding: 0.5rem 0.65rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            color: var(--text-secondary);
+            vertical-align: top;
+        }
+        .data-table tr:hover td { background: rgba(255, 255, 255, 0.5); }
+        details summary { cursor: pointer; list-style: none; }
+        details summary::-webkit-details-marker { display: none; }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-violet-500 selection:text-white">
+<body class="app-theme app-bg antialiased flex flex-col min-h-screen">
 
-    <!-- Top Navigation -->
-    <header class="border-b border-slate-800/80 bg-slate-900/70 backdrop-blur-md sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-6 py-3.5 flex items-center justify-between">
-            <div class="flex items-center space-x-4">
-                <a href="/" class="text-slate-400 hover:text-white flex items-center text-sm font-medium transition-colors">
-                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                    Suite Home
-                </a>
-                <div class="h-4 w-px bg-slate-800"></div>
-                <div class="flex items-center space-x-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-violet-500 shadow-sm shadow-violet-500 animate-pulse"></span>
-                    <h1 class="font-bold text-slate-100 text-sm sm:text-base">Task 3: Gemini Multimodal Document Vision</h1>
-                </div>
-            </div>
-            <div class="flex items-center space-x-3 text-xs">
-                <span class="px-2.5 py-1 bg-violet-950/80 border border-violet-800/50 text-violet-300 rounded-full font-mono text-[11px]">
-                    Cutoff: &lt; {{ confidence_threshold }}
-                </span>
-                <span class="px-2.5 py-1 bg-slate-800 border border-slate-700 text-slate-300 rounded-full text-[11px]">
-                    10 Form Categories
-                </span>
-            </div>
+    <header class="glass-bar sticky top-0 z-50 h-14 flex items-center justify-between px-4 sm:px-6">
+        <div class="flex items-center gap-3 min-w-0">
+            <a href="/" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-sm font-medium shrink-0">Home</a>
+            <span class="text-black/10">|</span>
+            <h1 class="text-sm font-semibold truncate">Document extraction</h1>
+        </div>
+        <div class="flex items-center gap-2 shrink-0 text-[11px] font-medium">
+            <span class="px-2.5 py-1 rounded-full glass-inset text-[var(--text-secondary)]">HITL &lt; {{ confidence_threshold }}</span>
+            <span class="px-2.5 py-1 rounded-full bg-teal-600/10 text-teal-900 border border-teal-600/20">{{ document_types|length }} types</span>
         </div>
     </header>
 
-    <!-- Main Container -->
-    <main class="max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-8">
+    <main class="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-5">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5">
 
-        <!-- Header Hero & Methodology Note Card -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-2 bg-gradient-to-br from-slate-900 via-slate-900/90 to-violet-950/30 border border-slate-800 rounded-2xl p-6 sm:p-7 shadow-xl">
-                <div class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-violet-500/10 text-violet-400 border border-violet-500/20 mb-3">
-                    Native Multimodal Vision Transformer
+            <!-- Input column -->
+            <div class="lg:col-span-4 space-y-3">
+                <div class="glass-panel rounded-2xl p-4">
+                    <p class="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-2">Upload</p>
+                    <form id="uploadForm" onsubmit="handleFormSubmit(event)">
+                        <div id="dropZone" class="glass-inset rounded-xl border-2 border-dashed border-black/10 p-6 text-center cursor-pointer transition-colors">
+                            <input type="file" id="fileInput" name="file" accept="image/*,application/pdf" class="hidden" onchange="handleFileSelected(this.files[0])">
+                            <p class="text-sm font-medium text-[var(--text-primary)]">Drop file or browse</p>
+                            <p class="text-[11px] text-[var(--text-muted)] mt-1">PNG · JPG · PDF</p>
+                            <div id="selectedFileInfo" class="hidden mt-3 inline-flex items-center gap-2 text-xs bg-white/80 border border-black/5 rounded-lg px-2.5 py-1.5 font-mono text-[var(--text-secondary)]">
+                                <span id="selectedFileName" class="truncate max-w-[180px]"></span>
+                                <button type="button" onclick="clearSelectedFile(event)" class="text-[var(--text-muted)] hover:text-red-600" aria-label="Clear">&times;</button>
+                            </div>
+                        </div>
+                        <button type="submit" id="submitBtn" class="btn btn-primary mt-3 w-full">
+                            Process
+                        </button>
+                    </form>
                 </div>
-                <h2 class="text-xl sm:text-2xl font-extrabold text-white tracking-tight mb-2">
-                    Autonomous Indian KYC & Insurance Document Intelligence
-                </h2>
-                <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                    Processes raw image and scanned PDF forms (Aadhaar, PAN, Passport, DL, and cursive proposal declarations). Performs zero-shot visual classification, extracts required entity fields with per-field confidence scoring, redacts Aadhaar PII coordinates, and routes sub-0.80 extractions to Human-in-the-Loop review.
-                </p>
 
-                <!-- Document Types Badges -->
-                <div class="mt-5 pt-4 border-t border-slate-800/80">
-                    <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-2">Supported Categories:</span>
-                    <div class="flex flex-wrap gap-1.5">
-                        {% for dt in document_types %}
-                        <span class="px-2 py-0.5 rounded text-[11px] bg-slate-800/70 text-slate-300 border border-slate-700/60 font-medium">
-                            {{ dt }}
-                        </span>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Methodology Card -->
-            <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between shadow-xl">
-                <div>
-                    <div class="flex items-center space-x-2 text-violet-400 mb-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <h3 class="font-bold text-xs uppercase tracking-wider text-slate-300">Methodology &amp; OCR Analysis</h3>
-                    </div>
-                    <p class="text-xs text-slate-400 leading-relaxed mt-2" id="methodologyText">
-                        {{ methodology_note }}
-                    </p>
-                </div>
-                <div class="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500">
-                    <span>Engine: Google Gemini 1.5 / 2.5 Flash</span>
-                    <span class="text-emerald-400 font-medium">Zero OCR Pre-segmentation</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Document Upload & Quick Test Controls -->
-        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 sm:p-7 shadow-xl space-y-6">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                    <h3 class="text-base font-bold text-white flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                        Upload Document or Select Reference Sample
-                    </h3>
-                    <p class="text-xs text-slate-400 mt-0.5">Supports PNG, JPEG, WEBP, or scanned multi-page PDF documents.</p>
-                </div>
                 {% if sample_files %}
-                <div class="flex items-center space-x-2">
-                    <label for="sampleSelect" class="text-xs text-slate-400 whitespace-nowrap">Quick Test:</label>
-                    <select id="sampleSelect" onchange="runSampleTest(this.value)" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-violet-500">
-                        <option value="">-- Choose Reference File --</option>
+                <div class="glass-panel rounded-2xl p-4">
+                    <div class="flex items-center justify-between gap-2 mb-2">
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Samples</p>
+                        <select id="sampleSelect" onchange="runSampleTest(this.value)" class="text-[11px] rounded-lg border border-black/10 bg-white/70 px-2 py-1 text-[var(--text-secondary)] max-w-[140px] truncate">
+                            <option value="">Select…</option>
+                            {% for sf in sample_files %}
+                            <option value="{{ sf }}">{{ sf }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
                         {% for sf in sample_files %}
-                        <option value="{{ sf }}">{{ sf }}</option>
+                        <button type="button" onclick="runSampleTest('{{ sf|escapejs }}')" class="sample-chip text-[10px] px-2 py-1 rounded-lg truncate max-w-full" title="{{ sf }}">{{ sf }}</button>
                         {% endfor %}
-                    </select>
-                </div>
-                {% endif %}
-            </div>
-
-            <!-- Drag and Drop Upload Zone -->
-            <form id="uploadForm" onsubmit="handleFormSubmit(event)">
-                <div id="dropZone" class="border-2 border-dashed border-slate-700/80 hover:border-violet-500/70 bg-slate-950/60 rounded-2xl p-8 sm:p-10 text-center transition-all cursor-pointer flex flex-col items-center justify-center">
-                    <input type="file" id="fileInput" name="file" accept="image/*,application/pdf" class="hidden" onchange="handleFileSelected(this.files[0])">
-                    
-                    <div class="w-14 h-14 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-3 text-violet-400">
-                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
                     </div>
-                    <p class="text-sm font-semibold text-slate-200">
-                        Drag and drop your document here, or <span class="text-violet-400 underline underline-offset-2">browse files</span>
-                    </p>
-                    <p class="text-xs text-slate-500 mt-1">PNG, JPG, TIFF, or PDF (first page rendered automatically)</p>
-
-                    <div id="selectedFileInfo" class="hidden mt-4 inline-flex items-center px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-200 font-mono">
-                        <span id="selectedFileName"></span>
-                        <button type="button" onclick="clearSelectedFile(event)" class="ml-2 text-slate-400 hover:text-red-400">&times;</button>
-                    </div>
-                </div>
-
-                <div class="mt-4 flex justify-end">
-                    <button type="submit" id="submitBtn" class="px-6 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-violet-600/30 transition-all flex items-center">
-                        <span>Process Document</span>
-                        <svg class="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                    <button type="button" onclick="runBatchPipeline()" class="btn btn-secondary btn-sm mt-3 w-full">
+                        Run all samples
                     </button>
                 </div>
-            </form>
-        </div>
+                {% endif %}
 
-        <!-- Loading State Indicator -->
-        <div id="loadingIndicator" class="hidden bg-slate-900/60 border border-slate-800 rounded-2xl p-10 text-center space-y-4">
-            <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-slate-700 border-t-violet-500"></div>
-            <div>
-                <h4 class="text-sm font-bold text-white">Multimodal Vision Transformer In Flight</h4>
-                <p class="text-xs text-slate-400 mt-1">Converting page matrix, executing zero-shot classification, and computing confidence scores...</p>
-            </div>
-        </div>
-
-        <!-- Results Section (Hidden until returned) -->
-        <div id="resultsContainer" class="hidden space-y-6">
-
-            <!-- Classification Header Banner -->
-            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div class="flex items-center space-x-4">
-                    <div class="w-12 h-12 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center text-violet-400">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    </div>
-                    <div>
-                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Detected Category</span>
-                        <h3 id="classificationBadge" class="text-xl font-extrabold text-white mt-0.5"></h3>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-3 text-xs">
-                    <div id="statTotalFields" class="bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700 text-slate-300 font-mono">
-                        Fields: <span class="font-bold text-white" id="statFieldsCount">0</span>
-                    </div>
-                    <div id="statFlaggedBadge" class="px-3 py-1.5 rounded-xl border font-mono"></div>
-                </div>
+                <details class="glass-panel rounded-2xl p-4 text-xs text-[var(--text-secondary)]">
+                    <summary class="font-medium text-[var(--text-primary)]">Notes</summary>
+                    <p class="mt-2 leading-relaxed" id="methodologyText">{{ methodology_note }}</p>
+                    <p class="mt-2 text-[11px] text-[var(--text-muted)]">{{ threshold_rationale }}</p>
+                </details>
             </div>
 
-            <!-- Quality Flagging Box (Green Success OR Amber/Red Warning) -->
-            <div id="flaggingBox" class="rounded-2xl p-6 border transition-all">
-                <!-- Dynamically populated via JS -->
-            </div>
+            <!-- Results column -->
+            <div class="lg:col-span-8 space-y-3 min-h-[320px]">
 
-            <!-- Two-Column Layout: Extracted Data Cards & JSON Inspection -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-                <!-- Column 1: Field Breakdown Table -->
-                <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
-                    <div class="flex items-center justify-between">
-                        <h4 class="text-sm font-bold text-white flex items-center">
-                            <span class="w-2 h-2 rounded-full bg-violet-400 mr-2"></span>
-                            Extracted Entity Coordinates
-                        </h4>
-                        <span class="text-[11px] text-slate-500">Aadhaar Redaction Enforced</span>
-                    </div>
-
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-xs border-collapse font-mono">
-                            <thead>
-                                <tr class="border-b border-slate-800 text-slate-400">
-                                    <th class="py-2.5 px-3">Field Name</th>
-                                    <th class="py-2.5 px-3">Extracted Value</th>
-                                    <th class="py-2.5 px-3">Confidence</th>
-                                    <th class="py-2.5 px-3">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="fieldsTableBody" class="divide-y divide-slate-800/60">
-                                <!-- Populated dynamically -->
-                            </tbody>
-                        </table>
-                    </div>
+                <div id="emptyState" class="glass-panel rounded-2xl p-8 text-center">
+                    <p class="text-sm font-medium text-[var(--text-primary)]">No document processed yet</p>
+                    <p class="text-xs text-[var(--text-muted)] mt-1">Upload a file or tap a sample.</p>
                 </div>
 
-                <!-- Column 2: Structured JSON Viewer -->
-                <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col space-y-4">
-                    <div class="flex items-center justify-between">
-                        <h4 class="text-sm font-bold text-white flex items-center">
-                            <svg class="w-4 h-4 mr-2 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
-                            Structured JSON Payload (<code class="text-violet-400">json_data</code>)
-                        </h4>
-                        <button onclick="copyJsonToClipboard()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-lg text-xs transition-colors flex items-center">
-                            <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                            Copy JSON
-                        </button>
-                    </div>
-
-                    <div class="flex-1 bg-slate-950 border border-slate-800/80 rounded-xl p-4 overflow-x-auto max-h-[420px]">
-                        <pre class="text-xs text-emerald-400 leading-relaxed"><code id="jsonOutput"></code></pre>
-                    </div>
+                <div id="loadingIndicator" class="hidden glass-panel rounded-2xl p-8 text-center">
+                    <svg class="animate-spin h-8 w-8 text-teal-700 mx-auto" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    <p class="text-sm font-medium mt-3 text-[var(--text-primary)]">Processing…</p>
                 </div>
-            </div>
 
-            <!-- Methodology Card (Repeated for clarity) -->
-            <div class="bg-gradient-to-r from-slate-900 via-slate-900 to-violet-950/30 border border-slate-800 rounded-2xl p-6 text-xs text-slate-400">
-                <h4 class="text-xs font-bold text-slate-200 uppercase tracking-wider mb-1 flex items-center">
-                    <span class="text-violet-400 mr-2">📌</span>
-                    Pipeline Methodology &amp; Failure Mode Observation
-                </h4>
-                <p id="methodologyBottom" class="leading-relaxed"></p>
+                <div id="resultsContainer" class="hidden space-y-3">
+
+                    <div class="glass-panel rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="text-[10px] uppercase tracking-wide text-[var(--text-muted)] font-semibold">Type</p>
+                            <h2 id="classificationBadge" class="text-lg font-semibold text-[var(--text-primary)] truncate"></h2>
+                        </div>
+                        <div class="flex flex-wrap gap-2 text-xs font-mono">
+                            <span id="statTotalFields" class="glass-inset px-2.5 py-1 rounded-lg text-[var(--text-secondary)]">
+                                Fields <strong id="statFieldsCount" class="text-[var(--text-primary)]">0</strong>
+                            </span>
+                            <span id="statFlaggedBadge" class="px-2.5 py-1 rounded-lg border"></span>
+                        </div>
+                    </div>
+
+                    <div id="flaggingBox" class="rounded-2xl p-4 border text-sm"></div>
+
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                        <div class="glass-panel rounded-2xl p-4 overflow-hidden">
+                            <p class="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-2">Fields</p>
+                            <div class="overflow-x-auto max-h-[360px] overflow-y-auto rounded-xl glass-inset">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Field</th>
+                                            <th>Value</th>
+                                            <th>Conf.</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="fieldsTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="glass-panel rounded-2xl p-4 flex flex-col min-h-[200px]">
+                            <div class="flex items-center justify-between gap-2 mb-2">
+                                <p class="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">JSON</p>
+                                <button type="button" onclick="copyJsonToClipboard()" class="btn btn-ghost btn-sm !py-1 !px-2">
+                                    Copy
+                                </button>
+                            </div>
+                            <pre class="flex-1 text-[11px] leading-relaxed p-3 rounded-xl bg-slate-900 text-emerald-100/90 overflow-auto max-h-[320px]"><code id="jsonOutput"></code></pre>
+                        </div>
+                    </div>
+
+                    <p class="text-[11px] text-[var(--text-muted)] px-1 hidden" id="methodologyBottom" aria-hidden="true"></p>
+                </div>
+
+                <div id="batchSummary" class="hidden glass-panel rounded-2xl p-4 text-xs text-[var(--text-secondary)]"></div>
             </div>
         </div>
-
     </main>
 
-    <!-- Footer -->
-    <footer class="border-t border-slate-900 bg-slate-950 py-4 text-center text-xs text-slate-600">
-        Enterprise AI Assignment Suite &bull; Task 3 Multimodal Vision &bull; Powered by Google Gemini
-    </footer>
-
-    <!-- Frontend Logic -->
     <script>
-        // CSRF Token Helper
+        const THRESHOLD = {{ confidence_threshold }};
+
         function getCookie(name) {
             let cookieValue = null;
             if (document.cookie && document.cookie !== '') {
@@ -265,6 +240,9 @@
         const fileInput = document.getElementById('fileInput');
         const selectedFileInfo = document.getElementById('selectedFileInfo');
         const selectedFileName = document.getElementById('selectedFileName');
+        const emptyState = document.getElementById('emptyState');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const batchSummary = document.getElementById('batchSummary');
 
         dropZone.addEventListener('click', () => fileInput.click());
 
@@ -285,11 +263,8 @@
         });
 
         dropZone.addEventListener('drop', (e) => {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            if (files.length > 0) {
-                handleFileSelected(files[0]);
-            }
+            const files = e.dataTransfer.files;
+            if (files.length > 0) handleFileSelected(files[0]);
         });
 
         function handleFileSelected(file) {
@@ -309,10 +284,9 @@
         async function handleFormSubmit(e) {
             e.preventDefault();
             if (!selectedFile) {
-                alert('Please select or drag a file to upload.');
+                alert('Choose a file first.');
                 return;
             }
-
             const formData = new FormData();
             formData.append('file', selectedFile);
             await submitPayload(formData);
@@ -323,13 +297,16 @@
             const formData = new FormData();
             formData.append('sample_filename', sampleName);
             await submitPayload(formData);
+            const sel = document.getElementById('sampleSelect');
+            if (sel) sel.value = sampleName;
         }
 
         async function submitPayload(formData) {
             const loadingIndicator = document.getElementById('loadingIndicator');
-            const resultsContainer = document.getElementById('resultsContainer');
             const submitBtn = document.getElementById('submitBtn');
 
+            batchSummary.classList.add('hidden');
+            emptyState.classList.add('hidden');
             loadingIndicator.classList.remove('hidden');
             resultsContainer.classList.add('hidden');
             submitBtn.disabled = true;
@@ -337,36 +314,71 @@
             try {
                 const response = await fetch('/task3/api/process/', {
                     method: 'POST',
-                    headers: {
-                        'X-CSRFToken': getCookie('csrftoken') || ''
-                    },
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') || '' },
                     body: formData
                 });
 
                 if (!response.ok) {
                     const errData = await response.json().catch(() => ({}));
-                    throw new Error(errData.details || errData.error || `Server responded with code ${response.status}`);
+                    throw new Error(errData.details || errData.error || `HTTP ${response.status}`);
                 }
 
                 const data = await response.json();
                 renderResults(data);
             } catch (err) {
-                alert(`Error processing document: ${err.message}`);
+                alert('Error: ' + err.message);
+                emptyState.classList.remove('hidden');
             } finally {
                 loadingIndicator.classList.add('hidden');
                 submitBtn.disabled = false;
             }
         }
 
+        async function runBatchPipeline() {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            loadingIndicator.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+            resultsContainer.classList.add('hidden');
+            batchSummary.classList.add('hidden');
+
+            try {
+                const response = await fetch('/task3/api/pipeline/', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') || '' }
+                });
+                const data = await response.json();
+                const docs = data.documents || {};
+                const flagged = (data.flagging_report && data.flagging_report.total_flagged_fields) || 0;
+                batchSummary.innerHTML = `
+                    <p class="font-semibold text-[var(--text-primary)] mb-1">Batch complete</p>
+                    <p>${Object.keys(docs).length} documents · ${flagged} flagged fields total</p>
+                `;
+                batchSummary.classList.remove('hidden');
+                const firstKey = Object.keys(docs)[0];
+                if (firstKey && docs[firstKey]) {
+                    const doc = docs[firstKey];
+                    renderResults({
+                        classification: doc.classification || doc.json_data?.document_type,
+                        json_data: doc.json_data,
+                        flagging_report: doc.flagging_report,
+                        methodology_note: data.methodology_note
+                    });
+                }
+            } catch (err) {
+                alert('Batch failed: ' + err.message);
+                emptyState.classList.remove('hidden');
+            } finally {
+                loadingIndicator.classList.add('hidden');
+            }
+        }
+
         function renderResults(data) {
             currentResultJson = data;
-            const resultsContainer = document.getElementById('resultsContainer');
+            emptyState.classList.add('hidden');
             resultsContainer.classList.remove('hidden');
 
-            // 1. Classification
             document.getElementById('classificationBadge').textContent = data.classification || 'Unknown';
 
-            // 2. Extracted Data & Table
             const extracted = (data.json_data && data.json_data.extracted_data) ? data.json_data.extracted_data : {};
             const tableBody = document.getElementById('fieldsTableBody');
             tableBody.innerHTML = '';
@@ -378,106 +390,72 @@
                 const item = extracted[key];
                 const val = (item && item.value !== undefined) ? item.value : item;
                 const score = (item && item.confidence_score !== undefined) ? item.confidence_score : 1.0;
-                const isFlagged = score < 0.80;
-
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-slate-800/40 transition-colors';
-
+                const isFlagged = score < THRESHOLD;
                 const isRedacted = String(val).includes('[Aadhaar Redacted]');
 
+                const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td class="py-2.5 px-3 font-semibold text-slate-200">${key}</td>
-                    <td class="py-2.5 px-3 ${isRedacted ? 'text-amber-400 font-bold' : 'text-slate-300'}">${val !== null ? val : '<span class="text-slate-500 italic">null</span>'}</td>
-                    <td class="py-2.5 px-3">
-                        <span class="px-2 py-0.5 rounded text-[11px] ${isFlagged ? 'bg-amber-950/80 text-amber-300 border border-amber-800' : 'bg-emerald-950/80 text-emerald-300 border border-emerald-800'}">
-                            ${(score * 100).toFixed(0)}%
-                        </span>
-                    </td>
-                    <td class="py-2.5 px-3">
-                        ${isFlagged ? '<span class="text-amber-400 text-[11px]">⚠️ Flagged</span>' : '<span class="text-emerald-400 text-[11px]">✓ Verified</span>'}
-                    </td>
+                    <td class="font-medium text-[var(--text-primary)]">${escapeHtml(key)}</td>
+                    <td class="${isRedacted ? 'text-amber-800 font-medium' : ''}">${val !== null && val !== undefined ? escapeHtml(String(val)) : '<span class="italic text-[var(--text-muted)]">—</span>'}</td>
+                    <td class="font-mono">${(score * 100).toFixed(0)}%</td>
+                    <td>${isFlagged ? '<span class="text-amber-700 text-[10px] font-medium">Review</span>' : '<span class="text-emerald-700 text-[10px] font-medium">OK</span>'}</td>
                 `;
                 tableBody.appendChild(tr);
             });
 
-            // 3. Flagging Report Box
             const report = data.flagging_report || {};
             const flaggedList = report.flagged_fields || [];
             const flaggingBox = document.getElementById('flaggingBox');
             const statFlaggedBadge = document.getElementById('statFlaggedBadge');
 
             if (flaggedList.length > 0) {
-                statFlaggedBadge.className = 'px-3 py-1.5 rounded-xl border font-mono bg-amber-950/60 border-amber-800 text-amber-300';
-                statFlaggedBadge.innerHTML = `Flagged: <span class="font-bold text-amber-400">${flaggedList.length}</span>`;
+                statFlaggedBadge.className = 'px-2.5 py-1 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-900 font-mono';
+                statFlaggedBadge.innerHTML = `Flagged <strong>${flaggedList.length}</strong>`;
 
-                let flaggedRows = flaggedList.map(f => `
-                    <tr class="border-b border-amber-900/40">
-                        <td class="py-2 px-3 font-semibold text-amber-200">${f.field_name}</td>
-                        <td class="py-2 px-3 text-slate-300">${f.value}</td>
-                        <td class="py-2 px-3 font-bold text-amber-400">${(f.confidence_score * 100).toFixed(0)}%</td>
-                        <td class="py-2 px-3 text-amber-300/80 text-[11px]">${f.rationale || 'Score strictly below 0.80'}</td>
+                const rows = flaggedList.map(f => `
+                    <tr>
+                        <td class="font-medium">${escapeHtml(f.field_name)}</td>
+                        <td>${escapeHtml(String(f.value ?? ''))}</td>
+                        <td class="font-mono">${((f.confidence_score || 0) * 100).toFixed(0)}%</td>
                     </tr>
                 `).join('');
 
-                flaggingBox.className = 'rounded-2xl p-6 border bg-amber-950/30 border-amber-800/70 text-slate-200 shadow-xl';
+                flaggingBox.className = 'rounded-2xl p-4 border border-amber-500/25 bg-amber-500/8';
                 flaggingBox.innerHTML = `
-                    <div class="flex items-start space-x-3 mb-4">
-                        <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 text-base font-bold">⚠️</div>
-                        <div>
-                            <h4 class="text-sm font-bold text-amber-300">Human-in-the-Loop Review Triggered (${flaggedList.length} Low-Confidence Field${flaggedList.length > 1 ? 's' : ''})</h4>
-                            <p class="text-xs text-amber-200/80 mt-0.5 leading-relaxed">${report.threshold_rationale || 'Fields scoring strictly below 0.80 require manual verification.'}</p>
-                        </div>
-                    </div>
-                    <div class="overflow-x-auto bg-slate-950/60 rounded-xl border border-amber-900/40">
-                        <table class="w-full text-left text-xs font-mono">
-                            <thead>
-                                <tr class="border-b border-amber-900/60 text-amber-400/80 bg-amber-950/40">
-                                    <th class="py-2 px-3">Field</th>
-                                    <th class="py-2 px-3">Value</th>
-                                    <th class="py-2 px-3">Score</th>
-                                    <th class="py-2 px-3">Flagging Rationale</th>
-                                </tr>
-                            </thead>
-                            <tbody>${flaggedRows}</tbody>
+                    <p class="font-semibold text-amber-900 text-sm mb-2">${flaggedList.length} field(s) need human review</p>
+                    <div class="overflow-x-auto rounded-xl glass-inset">
+                        <table class="data-table">
+                            <thead><tr><th>Field</th><th>Value</th><th>Score</th></tr></thead>
+                            <tbody>${rows}</tbody>
                         </table>
                     </div>
                 `;
             } else {
-                statFlaggedBadge.className = 'px-3 py-1.5 rounded-xl border font-mono bg-emerald-950/60 border-emerald-800 text-emerald-300';
-                statFlaggedBadge.innerHTML = `Flagged: <span class="font-bold text-emerald-400">0</span>`;
-
-                flaggingBox.className = 'rounded-2xl p-6 border bg-emerald-950/30 border-emerald-800/70 text-slate-200 shadow-xl';
-                flaggingBox.innerHTML = `
-                    <div class="flex items-start space-x-3">
-                        <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 text-base font-bold">✓</div>
-                        <div>
-                            <h4 class="text-sm font-bold text-emerald-300">Clean Quality Extraction — No Fields Flagged</h4>
-                            <p class="text-xs text-emerald-200/80 mt-0.5 leading-relaxed">
-                                All extracted coordinates achieved confidence scores &ge; ${(report.confidence_threshold || 0.80).toFixed(2)}. The document passes straight-through processing (STP) without requiring human verification.
-                            </p>
-                        </div>
-                    </div>
-                `;
+                statFlaggedBadge.className = 'px-2.5 py-1 rounded-lg border border-emerald-600/25 bg-emerald-600/10 text-emerald-900 font-mono';
+                statFlaggedBadge.innerHTML = 'Flagged <strong>0</strong>';
+                flaggingBox.className = 'rounded-2xl p-4 border border-emerald-600/25 bg-emerald-600/8';
+                flaggingBox.innerHTML = `<p class="font-semibold text-emerald-900 text-sm">All fields ≥ ${THRESHOLD} — straight-through</p>`;
             }
 
-            // 4. JSON Viewer
             document.getElementById('jsonOutput').textContent = JSON.stringify(data.json_data, null, 2);
+            const meth = document.getElementById('methodologyBottom');
+            if (meth) meth.textContent = data.methodology_note || document.getElementById('methodologyText').textContent;
 
-            // 5. Methodology Note
-            document.getElementById('methodologyBottom').textContent = data.methodology_note || document.getElementById('methodologyText').textContent;
+            resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
 
-            // Scroll to results
-            resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        function escapeHtml(s) {
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
         }
 
         function copyJsonToClipboard() {
-            if (!currentResultJson) return;
+            if (!currentResultJson || !currentResultJson.json_data) return;
             const text = JSON.stringify(currentResultJson.json_data, null, 2);
-            navigator.clipboard.writeText(text).then(() => {
-                alert('JSON copied to clipboard!');
-            }).catch(err => {
-                console.error('Failed copying: ', err);
-            });
+            navigator.clipboard.writeText(text).catch(() => alert('Copy failed'));
         }
     </script>
 </body>

@@ -7,7 +7,25 @@ from django.shortcuts import render
 
 def home_view(request):
     """Landing dashboard linking to all three assignment applications."""
-    return render(request, 'home.html')
+    try:
+        sample_docs = len([p for p in (settings.DATA_DIR / 'sample_documents').glob('*') if p.is_file()])
+    except Exception:
+        sample_docs = 13
+    try:
+        support_docs = len([p for p in (settings.DATA_DIR / 'support_documents').glob('*') if p.is_file()])
+    except Exception:
+        support_docs = 3
+    dataset_file = (settings.DATA_DIR / 'Inventory-Records-Sample-Data.xlsx').exists()
+    
+    context = {
+        'gemini_active': bool(getattr(settings, 'GEMINI_API_KEY', '')),
+        'groq_active': bool(getattr(settings, 'GROQ_API_KEY', '')),
+        'dataset_exists': dataset_file,
+        'knowledge_docs_count': support_docs,
+        'sample_docs_count': sample_docs,
+        'total_records': 46,
+    }
+    return render(request, 'home.html', context)
 
 urlpatterns = [
     path('admin/', admin.site.urls),

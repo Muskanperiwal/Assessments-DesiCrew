@@ -16,9 +16,13 @@ from django.shortcuts import render
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from .engine import RAG_ENGINE, get_relevant_context, format_context
+from .engine import RAG_ENGINE, get_relevant_context, format_context, STOP_WORDS
 
 logger = logging.getLogger(__name__)
+
+# Key & Model performance cache
+_EXCLUDED_MODELS = set()
+_QUOTA_EXHAUSTED_KEYS = {}
 
 SYSTEM_PROMPT = (
     "You are an expert customer support assistant for a company. "
@@ -207,12 +211,16 @@ def call_gemini_chat(
                 "parts": [msg.get("content", "")]
             })
 
-        for key_candidate in keys_pool:
-            if not key_candidate:
-                continue
+        import time
+        now = time.time()
+        active_keys = [k for k in keys_pool if k and (_QUOTA_EXHAUSTED_KEYS.get(k, 0) + 300 < now)]
+
+        for key_candidate in active_keys:
             genai.configure(api_key=key_candidate)
 
             for model_name in candidate_models:
+                if model_name in _EXCLUDED_MODELS:
+                    continue
                 try:
                     model = genai.GenerativeModel(
                         model_name=model_name,
@@ -224,14 +232,15 @@ def call_gemini_chat(
                         return response.text.strip()
                 except Exception as model_err:
                     err_str = str(model_err)
-                    # If 404, try next model; if quota exceeded (429), try next key
+                    # If 404, mark model globally so we don't retry it on every key
                     if "404" in err_str:
+                        _EXCLUDED_MODELS.add(model_name)
                         continue
+                    # If quota reached, remember key cooldown and advance to next key
                     elif "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-                        logger.warning(f"Quota reached on key {key_candidate[:10]}... trying next key.")
-                        break  # Break to next key
+                        _QUOTA_EXHAUSTED_KEYS[key_candidate] = time.time()
+                        break
                     else:
-                        logger.warning(f"Gemini call error on model {model_name}: {model_err}")
                         continue
     except Exception as general_err:
         logger.error(f"Failed invoking Gemini: {general_err}")

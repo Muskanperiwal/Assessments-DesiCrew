@@ -129,19 +129,25 @@ Open **[http://127.0.0.1:8000/](http://127.0.0.1:8000/)** in your browser to acc
   ```
 
 ### Task 2: Support Assistant
-- **`POST /task2/api/chat/`**:
+- **`POST /task2/api/support_chat/`** (or `/task2/api/chat/`):
   ```json
   // Request
   { "message": "What is the policy regarding refund eligibility?" }
   // Response
   {
     "reply": "...",
-    "citation": "[Document: Subscription Billing Guide | Section: § 2.1 - Refund Windows]",
+    "citation": "[Doc: Subscription_Billing_Guide.pdf, Page: 2, Section: Refund & Cancellation Terms]",
+    "citations": ["[Doc: Subscription_Billing_Guide.pdf, Page: 2, Section: Refund & Cancellation Terms]"],
     "turn_number": 1,
-    "topic": "Refund Windows"
+    "topic": "Refund & Cancellation Terms",
+    "is_topic_switch": false
   }
   ```
 - **`POST /task2/api/reset/`**: Clears multi-turn session history.
+- **Run 10-Turn Benchmark CLI**:
+  ```bash
+  python task2_support/run_10_turn_demo.py
+  ```
 
 ### Task 3: Document Extraction
 - **`GET/POST /task3/api/pipeline/`**: Runs the complete extraction pipeline over all 10 reference documents and returns both structured extractions and the flagging report.

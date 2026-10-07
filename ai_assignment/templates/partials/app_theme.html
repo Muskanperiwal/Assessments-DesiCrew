@@ -1,0 +1,154 @@
+<style>
+    :root {
+        --color-bg: #f4f6f8;
+        --color-surface: #ffffff;
+        --color-text: #0f172a;
+        --color-text-secondary: #475569;
+        --color-text-muted: #64748b;
+        --color-border: rgba(15, 23, 42, 0.08);
+        --color-teal: #0d9488;
+        --color-teal-hover: #0f766e;
+        --color-teal-soft: rgba(13, 148, 136, 0.12);
+        --color-emerald: #059669;
+        --color-emerald-soft: rgba(5, 150, 105, 0.12);
+        --glass-bg: rgba(255, 255, 255, 0.78);
+        --glass-border: rgba(255, 255, 255, 0.9);
+        --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+        --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.06);
+        --blur: 16px;
+        --radius-sm: 10px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --radius-xl: 20px;
+        --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    }
+
+    body.app-theme {
+        font-family: var(--font-sans);
+        color: var(--color-text);
+        background: var(--color-bg);
+        -webkit-font-smoothing: antialiased;
+    }
+
+    body.app-theme .app-bg {
+        background:
+            radial-gradient(ellipse 70% 50% at 8% -8%, rgba(13, 148, 136, 0.1), transparent 55%),
+            radial-gradient(ellipse 55% 45% at 100% 100%, rgba(5, 150, 105, 0.07), transparent 50%),
+            linear-gradient(180deg, #f8faf9 0%, var(--color-bg) 100%);
+    }
+
+    body.app-theme code,
+    body.app-theme pre { font-family: var(--font-mono); }
+
+    body.app-theme .glass-panel {
+        background: var(--glass-bg);
+        backdrop-filter: blur(var(--blur));
+        -webkit-backdrop-filter: blur(var(--blur));
+        border: 1px solid var(--glass-border);
+        box-shadow: var(--shadow-md);
+    }
+
+    body.app-theme .glass-bar {
+        background: rgba(255, 255, 255, 0.82);
+        backdrop-filter: blur(var(--blur));
+        -webkit-backdrop-filter: blur(var(--blur));
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    body.app-theme .glass-inset {
+        background: rgba(255, 255, 255, 0.62);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--color-border);
+    }
+
+    body.app-theme .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.375rem;
+        font-family: inherit;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        line-height: 1.25;
+        padding: 0.625rem 1rem;
+        border-radius: var(--radius-md);
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+        text-decoration: none;
+    }
+
+    body.app-theme .btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    body.app-theme .btn-primary {
+        background: linear-gradient(180deg, var(--color-teal) 0%, var(--color-teal-hover) 100%);
+        color: #fff;
+        box-shadow: var(--shadow-sm);
+    }
+
+    body.app-theme .btn-primary:hover:not(:disabled) {
+        filter: brightness(1.03);
+        box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25);
+    }
+
+    body.app-theme .btn-secondary {
+        background: var(--color-surface);
+        color: var(--color-teal-hover);
+        border-color: rgba(13, 148, 136, 0.35);
+    }
+
+    body.app-theme .btn-secondary:hover:not(:disabled) {
+        background: var(--color-teal-soft);
+    }
+
+    body.app-theme .btn-ghost {
+        background: transparent;
+        color: var(--color-text-secondary);
+        border-color: var(--color-border);
+    }
+
+    body.app-theme .btn-ghost:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.8);
+        color: var(--color-text);
+    }
+
+    body.app-theme .btn-sm {
+        padding: 0.45rem 0.75rem;
+        font-size: 0.75rem;
+        border-radius: var(--radius-sm);
+    }
+
+    body.app-theme .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        padding: 0.25rem 0.625rem;
+        border-radius: 999px;
+        border: 1px solid var(--color-border);
+        background: rgba(255, 255, 255, 0.7);
+        color: var(--color-text-secondary);
+    }
+
+    body.app-theme .badge-live {
+        border-color: rgba(5, 150, 105, 0.25);
+        background: var(--color-emerald-soft);
+        color: #065f46;
+    }
+
+    body.app-theme .badge-dot::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--color-emerald);
+    }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
