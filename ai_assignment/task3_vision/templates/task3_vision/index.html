@@ -15,6 +15,18 @@
         .task3-table .data-table th { color: var(--color-text); }
         .task3-table .data-table td { color: var(--color-text); }
         #jsonOutput { color: #d1fae5; }
+        #errorState {
+            color: #7f1d1d;
+            background: #fef2f2;
+            border-color: #fca5a5;
+            font-weight: 500;
+        }
+        html[data-theme="dark"] #errorState,
+        html.dark #errorState {
+            color: #fecaca;
+            background: rgba(127, 29, 29, 0.35);
+            border-color: rgba(248, 113, 113, 0.45);
+        }
     </style>
 </head>
 <body class="app-theme app-bg antialiased flex flex-col min-h-screen">
@@ -182,6 +194,31 @@
         const resultsContainer = document.getElementById('resultsContainer');
         const batchSummary = document.getElementById('batchSummary');
         const errorState = document.getElementById('errorState');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+
+        /** Only one main panel visible: idle | loading | results | error */
+        function setPanelState(state) {
+            const show = (el, on) => el.classList.toggle('hidden', !on);
+            show(loadingIndicator, state === 'loading');
+            show(emptyState, state === 'idle');
+            show(resultsContainer, state === 'results');
+            if (state === 'error') {
+                show(errorState, true);
+                show(emptyState, false);
+            } else {
+                show(errorState, false);
+                if (state !== 'idle') show(emptyState, false);
+            }
+        }
+
+        function getSelectedUploadFile() {
+            if (selectedFile) return selectedFile;
+            if (fileInput.files && fileInput.files.length > 0) {
+                selectedFile = fileInput.files[0];
+                return selectedFile;
+            }
+            return null;
+        }
 
         dropZone.addEventListener('click', () => fileInput.click());
 
@@ -208,14 +245,7 @@
 
         function showError(message) {
             errorState.textContent = message;
-            errorState.classList.remove('hidden');
-            emptyState.classList.remove('hidden');
-            resultsContainer.classList.add('hidden');
-        }
-
-        function clearError() {
-            errorState.classList.add('hidden');
-            errorState.textContent = '';
+            setPanelState('error');
         }
 
         function handleFileSelected(file) {
@@ -223,6 +253,12 @@
             selectedFile = file;
             selectedFileName.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
             selectedFileInfo.classList.remove('hidden');
+            errorState.classList.add('hidden');
+            errorState.textContent = '';
+            if (!loadingIndicator.classList.contains('hidden')) return;
+            if (resultsContainer.classList.contains('hidden')) {
+                setPanelState('idle');
+            }
         }
 
         function clearSelectedFile(e) {
@@ -234,12 +270,13 @@
 
         async function handleFormSubmit(e) {
             e.preventDefault();
-            if (!selectedFile) {
+            const file = getSelectedUploadFile();
+            if (!file) {
                 showError('Choose a file before processing.');
                 return;
             }
             const formData = new FormData();
-            formData.append('file', selectedFile);
+            formData.append('file', file);
             await submitPayload(formData);
         }
 
@@ -251,14 +288,10 @@
         }
 
         async function submitPayload(formData) {
-            const loadingIndicator = document.getElementById('loadingIndicator');
             const submitBtn = document.getElementById('submitBtn');
 
-            clearError();
             batchSummary.classList.add('hidden');
-            emptyState.classList.add('hidden');
-            loadingIndicator.classList.remove('hidden');
-            resultsContainer.classList.add('hidden');
+            setPanelState('loading');
             if (submitBtn) submitBtn.disabled = true;
 
             try {
@@ -281,18 +314,18 @@
             } catch (err) {
                 showError('Processing failed: ' + err.message);
             } finally {
-                loadingIndicator.classList.add('hidden');
+                if (!errorState.classList.contains('hidden')) {
+                    /* showError already set state */
+                } else if (resultsContainer.classList.contains('hidden')) {
+                    setPanelState('idle');
+                }
                 if (submitBtn) submitBtn.disabled = false;
             }
         }
 
         async function runBatchPipeline() {
-            const loadingIndicator = document.getElementById('loadingIndicator');
-            clearError();
-            loadingIndicator.classList.remove('hidden');
-            emptyState.classList.add('hidden');
-            resultsContainer.classList.add('hidden');
             batchSummary.classList.add('hidden');
+            setPanelState('loading');
 
             try {
                 const response = await fetch('/task3/api/pipeline/', {
@@ -341,11 +374,14 @@
                 const firstKey = Object.keys(docs)[0];
                 if (firstKey) renderResults(docs[firstKey]);
                 else if (failures.length) showError('All samples failed. Check GEMINI_API_KEY and server logs.');
-                else emptyState.classList.remove('hidden');
+                else setPanelState('idle');
             } catch (err) {
                 showError('Batch failed: ' + err.message);
             } finally {
-                loadingIndicator.classList.add('hidden');
+                if (!errorState.classList.contains('hidden')) return;
+                if (resultsContainer.classList.contains('hidden') && batchSummary.classList.contains('hidden')) {
+                    setPanelState('idle');
+                }
             }
         }
 
@@ -363,9 +399,9 @@
 
         function renderResults(data) {
             currentResultJson = data;
-            clearError();
-            emptyState.classList.add('hidden');
-            resultsContainer.classList.remove('hidden');
+            errorState.classList.add('hidden');
+            errorState.textContent = '';
+            setPanelState('results');
 
             const jd = data.json_data || {};
             document.getElementById('resultFilename').textContent = data.filename || '';
