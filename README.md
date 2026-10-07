@@ -1,158 +1,150 @@
-# Technical Assessment Solutions - DesiCrew
+# Enterprise AI Assignment Suite (Django 5.x)
 
-**Author:** Muskan Periwal  
-**GitHub:** [@Muskanperiwal](https://github.com/Muskanperiwal)  
-**Repository:** [Assessments-DesiCrew](https://github.com/Muskanperiwal/Assessments-DesiCrew)
-
----
-
-## 📌 Overview
-
-This repository contains end-to-end, production-grade solutions for the technical assessment challenges:
-
-1. **Question 1: Excel Inventory Intelligence Agent**
-   - An intelligent agentic AI system designed to load, analyze, and query multi-sheet Excel inventory datasets.
-   - Capabilities include automatic Python/Pandas code synthesis and sandboxed execution, domain-specific terminology search (Hand-in-Stock, Sell-Through Rate, Safety Stock, ABC Pareto Classification), and plain-English executive summarization.
-   - Features a modern dark-mode interactive web dashboard with real-time prompt chips, custom file uploads, and an embedded Python playground.
-
-2. **Question 2: Document-Aware Multi-Turn Support Assistant**
-   - A contextual customer support agent maintaining conversational state across long multi-turn dialogues.
-   - Enforces intelligent anti-repetition rules, recognizes and manages topic switching gracefully, and strictly grounds all responses with exact document section citations (`[Document.md § X. - Title]`).
-   - Includes a full 10-turn automated benchmark test suite and an interactive dual-panel chat web application with real-time topic tracking.
-
-3. **Question 3 & Reference Materials**
-   - Reference files, proposal/assignment forms, KYC identity documents, and question specifications.
+A unified, production-ready Django 5.x application housing three enterprise AI micro-systems:
+1. **Task 1 (`/task1/`)**: Autonomous Inventory Data Analyst Agent (Dynamic Pandas execution, DuckDuckGo web search, ReAct feedback loop).
+2. **Task 2 (`/task2/`)**: DocAware Multi-Turn Support Assistant (PyMuPDF document indexing, 10-turn session memory, anti-repetition protection, precise section citations).
+3. **Task 3 (`/task3/`)**: Multimodal Document Scanner & Extractor (10 statutory ID and handwritten insurance forms, confidence scoring, 0.85 threshold human-in-the-loop flagging report).
 
 ---
 
-## 📂 Repository Structure
+## 🚀 Quick Deployment Guide
 
-```
-.
-├── .gitignore                                # Git ignore rules (virtualenvs, temporary files, etc.)
-├── README.md                                 # Main project documentation (this file)
-├── requirements.txt                          # Python dependencies with pinned versions
-├── Questions.docx                            # Original assessment problem statements
-│
-├── Question 1 & 3 (Files to use)/            # Input datasets and reference assets
-│   ├── Question 1/
-│   │   └── Inventory-Records-Sample-Data.xlsx # Sample inventory dataset
-│   └── Question 3/                           # KYC, proposal, and assignment document assets
-│
-├── question_1_inventory_agent/               # Question 1: Inventory Intelligence Agent
-│   ├── app.py                                # Flask web server & REST endpoints (Port 5000)
-│   ├── agent.py                              # Core reasoning agent, query routing & code generation
-│   ├── code_executor.py                      # Sandboxed Python execution engine
-│   ├── inventory_loader.py                   # Excel parser with auto-header discovery & normalization
-│   ├── search_engine.py                      # Domain glossary and external search fallback
-│   ├── static/                               # Web dashboard assets (HTML5, CSS3, JavaScript)
-│   │   ├── index.html
-│   │   ├── styles.css
-│   │   └── app.js
-│   └── README.md                             # Detailed documentation for Question 1
-│
-└── question_2_support_assistant/             # Question 2: Document-Aware Support Assistant
-    ├── app.py                                # Flask conversational web server (Port 5001)
-    ├── assistant.py                          # Multi-turn stateful assistant & grounding logic
-    ├── knowledge_indexer.py                  # Knowledge base chunker, TF-IDF indexer & citation engine
-    ├── session_memory.py                     # Dialogue history, entity stack & anti-repetition tracker
-    ├── run_10_turn_demo.py                   # Automated 10-turn benchmark script
-    ├── documents/                            # Knowledge base policies
-    │   ├── Account_Security_Privacy.md
-    │   ├── Customer_Support_Policy.md
-    │   └── Subscription_Billing_Guide.md
-    ├── static/                               # Modern chat interface assets
-    │   ├── index.html
-    │   ├── styles.css
-    │   └── app.js
-    └── README.md                             # Detailed documentation for Question 2
-```
+This project is pre-configured with **WhiteNoise**, **Gunicorn**, **Procfile**, **build.sh**, and **Dockerfile** for zero-friction cloud deployment.
+
+### 🌟 Option 1: Render.com (Recommended — Fast & Free)
+
+1. Push your code to a **GitHub** repository.
+2. Sign in to [Render](https://render.com/) and click **New + > Web Service**.
+3. Select your GitHub repository.
+4. Fill in the following settings:
+   - **Name**: `ai-assignment-suite` (or your choice)
+   - **Language**: `Python 3`
+   - **Branch**: `main`
+   - **Region**: Any (e.g. Frankfurt / Oregon / Singapore)
+   - **Build Command**:
+     ```bash
+     ./build.sh
+     ```
+     *(Or if deploying with Root Directory set to `ai_assignment`: `pip install -r requirements.txt && python manage.py collectstatic --no-input && python manage.py migrate`)*
+   - **Start Command**:
+     ```bash
+     gunicorn ai_assignment.wsgi:application --bind 0.0.0.0:$PORT
+     ```
+5. In **Environment Variables**, add:
+   - `DEBUG`: `False`
+   - `SECRET_KEY`: *(Click "Generate" or provide a secure random key)*
+   - `GEMINI_API_KEY`: `your_gemini_api_key_here`
+   - `GROQ_API_KEY`: *(Optional) `your_groq_api_key_here`*
+   - `ALLOWED_HOSTS`: `*`
+6. Click **Deploy Web Service**. Your app will be live with a free `https://<service-name>.onrender.com` SSL URL.
 
 ---
 
-## 🚀 Getting Started
+### 🚂 Option 2: Railway.app
 
-### 1. Clone the Repository
+1. Go to [Railway.app](https://railway.app/) and create a **New Project**.
+2. Click **Deploy from GitHub repo** and select this repository.
+3. Railway automatically detects the provided [Dockerfile](file:///C:/Users/nikhil.singh01_livsp/Desktop/muskan%20periwal/Dockerfile) or [Procfile](file:///C:/Users/nikhil.singh01_livsp/Desktop/muskan%20periwal/Procfile).
+4. In the **Variables** tab, set:
+   - `DEBUG` = `False`
+   - `GEMINI_API_KEY` = `your_gemini_api_key`
+   - `GROQ_API_KEY` = `your_groq_api_key`
+5. In the **Settings** tab, generate a public domain (e.g. `your-app.up.railway.app`). Railway handles SSL automatically.
 
+---
+
+### 🐳 Option 3: Docker & Docker Compose (Any Cloud VPS, AWS, GCP, Azure, DigitalOcean)
+
+A multi-stage [Dockerfile](file:///C:/Users/nikhil.singh01_livsp/Desktop/muskan%20periwal/Dockerfile) and [docker-compose.yml](file:///C:/Users/nikhil.singh01_livsp/Desktop/muskan%20periwal/docker-compose.yml) are included.
+
+#### Using Docker Compose:
 ```bash
-git clone https://github.com/Muskanperiwal/Assessments-DesiCrew.git
-cd Assessments-DesiCrew
+# Clone the repository
+git clone <your-repo-url>
+cd <repo-folder>
+
+# Launch the containerized application
+docker compose up -d --build
 ```
+Access the application at `http://localhost:8000`.
 
-### 2. Environment Setup
-
-Create and activate a Python virtual environment (Python 3.10+ recommended):
-
+#### Using Docker CLI:
 ```bash
-# Windows
-python -m venv .venv
-.venv\Scripts\activate
-
-# macOS / Linux
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-### 3. Install Dependencies
-
-```bash
-pip install -r requirements.txt
+docker build -t ai-suite .
+docker run -d -p 8000:8000 \
+  -e DEBUG=False \
+  -e GEMINI_API_KEY="your_gemini_key" \
+  -e GROQ_API_KEY="your_groq_key" \
+  ai-suite
 ```
 
 ---
 
-## 💻 Running the Applications
+### 🐍 Option 4: PythonAnywhere (Free Python Hosting)
 
-### Question 1: Inventory Intelligence Agent
+1. Sign up at [PythonAnywhere](https://www.pythonanywhere.com/).
+2. Open a **Bash Console** and clone the repo:
+   ```bash
+   git clone <your-repo-url>
+   cd "muskan periwal/ai_assignment"
+   mkvirtualenv --python=/usr/bin/python3.11 ai_env
+   pip install -r requirements.txt
+   python manage.py collectstatic --no-input
+   python manage.py migrate
+   ```
+3. Go to the **Web** tab:
+   - Add a new web app (Manual configuration, Python 3.11).
+   - Set **Source code**: `/home/<username>/.../ai_assignment`
+   - Set **Virtualenv**: `/home/<username>/.virtualenvs/ai_env`
+4. Edit the **WSGI configuration file**:
+   ```python
+   import os
+   import sys
 
-Start the Flask server for Question 1:
-```bash
-python question_1_inventory_agent/app.py
-```
-Open your browser at: **`http://127.0.0.1:5000`**
+   path = '/home/<username>/.../ai_assignment'
+   if path not in sys.path:
+       sys.path.append(path)
 
-**Key Features:**
-- Natural language queries translated directly into executable Pandas code.
-- Immediate metrics calculations: Valuation, Sales Velocity, ABC Analysis, Stockout Risk.
-- Domain glossary lookups for supply chain terminology.
-- Custom Excel file uploader and live interactive code executor.
-
----
-
-### Question 2: Support Assistant
-
-#### A. Automated 10-Turn Benchmark Demo (CLI)
-Run the automated verification script:
-```bash
-python question_2_support_assistant/run_10_turn_demo.py
-```
-This runs a simulated 10-turn dialogue demonstrating context retention, topic switching, anti-repetition memory, and section citations.
-
-#### B. Interactive Web Chat Interface
-Start the Flask server for Question 2:
-```bash
-python question_2_support_assistant/app.py
-```
-Open your browser at: **`http://127.0.0.1:5001`**
-
-**Key Features:**
-- Stateful dialogue across multi-turn sessions.
-- Real-time topic badge updates and document citation pills.
-- Dedicated "Run 10-Turn Demonstration" trigger button.
-- Session memory reset and live policy reference viewer.
+   os.environ['DJANGO_SETTINGS_MODULE'] = 'ai_assignment.settings'
+   from django.core.wsgi import get_wsgi_application
+   application = get_wsgi_application()
+   ```
+5. Click **Reload <username>.pythonanywhere.com**.
 
 ---
 
-## 🛠️ Tech Stack & Libraries
+### 🖥️ Option 5: Local Execution (Development)
 
-- **Language:** Python 3.10+
-- **Web Framework:** Flask, Werkzeug, Jinja2
-- **Data Analytics:** Pandas, NumPy, OpenPyXL
-- **Frontend:** Vanilla HTML5, CSS3 (Glassmorphic dark design system), Modern JavaScript (ES6+)
-- **Algorithms:** TF-IDF keyword indexing, AST safe code parsing, conversational buffer memory
+1. Activate your virtual environment:
+   ```bash
+   # Windows:
+   .\.venv\Scripts\activate
+   # Linux/macOS:
+   source .venv/bin/activate
+   ```
+2. Navigate into the Django directory:
+   ```bash
+   cd ai_assignment
+   ```
+3. Run migrations:
+   ```bash
+   python manage.py migrate
+   ```
+4. Start the development server:
+   ```bash
+   python manage.py runserver 8000
+   ```
+5. Visit [http://127.0.0.1:8000/](http://127.0.0.1:8000/) in your browser.
 
 ---
 
-## 📄 License
+## 🔑 Environment Variables Reference
 
-This repository is created for the technical assessment evaluation by DesiCrew. All rights reserved.
+| Variable | Required | Description | Example |
+| :--- | :---: | :--- | :--- |
+| `DEBUG` | Optional | Set to `False` in production | `False` |
+| `SECRET_KEY` | Recommended | Django security secret key | `random-string` |
+| `ALLOWED_HOSTS` | Optional | Comma-separated list of allowed domains | `*,your-domain.com` |
+| `GEMINI_API_KEY` | Optional | Google Gemini API key for Task 1 & Task 2 | `AIzaSy...` |
+| `GROQ_API_KEY` | Optional | Groq API key for Llama 3.3 70B fallback | `gsk_...` |
+| `CSRF_TRUSTED_ORIGINS` | Optional | Extra trusted origins for CSRF POST requests | `https://*.onrender.com,https://your-domain.com` |

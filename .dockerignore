@@ -1,0 +1,17 @@
+.venv
+venv
+env
+.env
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.zip
+*.docx
+staticfiles
+media
+.git
+.gitignore
+.vscode
+.idea
+*.log
