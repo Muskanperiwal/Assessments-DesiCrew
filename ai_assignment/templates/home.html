@@ -15,11 +15,14 @@
                 <span class="w-8 h-8 rounded-[var(--radius-md)] bg-[var(--color-teal)] text-white text-xs font-bold flex items-center justify-center">AI</span>
                 <span>Assignment Suite</span>
             </a>
-            {% if gemini_active %}
-            <span class="badge badge-live badge-dot">API ready</span>
-            {% else %}
-            <span class="badge">Local mode</span>
-            {% endif %}
+            <div class="flex items-center gap-2">
+                {% if gemini_active %}
+                <span class="badge badge-live badge-dot">API ready</span>
+                {% else %}
+                <span class="badge">Local mode</span>
+                {% endif %}
+                {% include 'partials/theme_toggle.html' %}
+            </div>
         </div>
     </header>
 

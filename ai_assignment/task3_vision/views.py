@@ -5,11 +5,10 @@ for uploading documents, running the Gemini vision pipeline, and generating
 compliance flagging reports.
 """
 
-import json
 import logging
 from pathlib import Path
 from django.conf import settings
-from django.http import JsonResponse, HttpResponseBadRequest
+from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -113,26 +112,31 @@ def api_run_pipeline(request):
     """Full corpus batch endpoint for compatibility."""
     sample_docs_dir = getattr(settings, 'DATA_DIR', Path(settings.BASE_DIR) / 'data') / 'sample_documents'
     results = {}
+    failures = []
     all_flagged = []
 
     if sample_docs_dir.exists():
         for f in sorted(sample_docs_dir.iterdir()):
-            if f.is_file() and f.suffix.lower() in ['.png', '.jpg', '.jpeg']:
+            if f.is_file() and f.suffix.lower() in ['.png', '.jpg', '.jpeg', '.pdf']:
                 try:
                     res = process_document(str(f), filename=f.name)
                     results[f.name] = res
                     all_flagged.extend(res["flagging_report"]["flagged_fields"])
                 except Exception as e:
                     logger.warning("Failed running sample %s: %s", f.name, e)
+                    failures.append({"filename": f.name, "error": str(e)})
 
     return JsonResponse({
         "documents": results,
+        "failures": failures,
         "flagging_report": {
             "confidence_threshold": CONFIDENCE_THRESHOLD,
             "threshold_rationale": THRESHOLD_RATIONALE,
             "total_documents": len(results),
+            "failed_documents": len(failures),
             "total_flagged_fields": len(all_flagged),
             "flagged_fields": all_flagged,
         },
-        "methodology_note": METHODOLOGY_NOTE
+        "methodology_note": METHODOLOGY_NOTE,
+        "confidence_threshold": CONFIDENCE_THRESHOLD,
     })

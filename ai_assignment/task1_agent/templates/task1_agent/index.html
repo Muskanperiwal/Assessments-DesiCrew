@@ -8,138 +8,11 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     {% include 'partials/app_theme.html' %}
     <style>
-        :root {
-            --glass-bg: rgba(255, 255, 255, 0.72);
-            --glass-border: rgba(255, 255, 255, 0.85);
-            --glass-shadow: 0 8px 32px rgba(15, 23, 42, 0.06);
-            --text-primary: #17181c;
-            --text-secondary: #4b5563;
-            --text-muted: #6b7280;
-            --surface: #e8eaef;
-            --accent: #0d9488;
-            --accent-soft: rgba(13, 148, 136, 0.14);
-            --blur: 18px;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            color: var(--text-primary);
-            background: var(--surface);
-        }
-
-        code, pre { font-family: 'JetBrains Mono', monospace; }
-
-        .app-bg {
-            background:
-                radial-gradient(ellipse 70% 55% at 10% -5%, rgba(13, 148, 136, 0.09), transparent 55%),
-                radial-gradient(ellipse 50% 45% at 95% 100%, rgba(99, 102, 241, 0.06), transparent 50%),
-                linear-gradient(165deg, #eef0f4 0%, #e4e7ee 45%, #eceef3 100%);
-        }
-
-        .glass-panel {
-            background: var(--glass-bg);
-            backdrop-filter: blur(var(--blur));
-            -webkit-backdrop-filter: blur(var(--blur));
-            border: 1px solid rgba(255, 255, 255, 0.65);
-            box-shadow: var(--glass-shadow);
-        }
-
-        .glass-inset {
-            background: rgba(255, 255, 255, 0.55);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(0, 0, 0, 0.05);
-        }
-
-        .glass-bar {
-            background: rgba(255, 255, 255, 0.78);
-            backdrop-filter: blur(var(--blur));
-            -webkit-backdrop-filter: blur(var(--blur));
-            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-        }
-
-        .glass-composer {
-            background: rgba(255, 255, 255, 0.88);
-            backdrop-filter: blur(var(--blur));
-            -webkit-backdrop-filter: blur(var(--blur));
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            box-shadow: 0 2px 16px rgba(15, 23, 42, 0.05);
-        }
-
-        .glass-composer:focus-within {
-            border-color: rgba(13, 148, 136, 0.45);
-            box-shadow: 0 0 0 3px var(--accent-soft), 0 2px 16px rgba(15, 23, 42, 0.05);
-        }
-
-        .msg-user {
-            background: rgba(255, 255, 255, 0.92);
-            border: 1px solid rgba(0, 0, 0, 0.07);
-            color: var(--text-primary);
-        }
-
-        .msg-assistant {
-            background: rgba(255, 255, 255, 0.78);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(0, 0, 0, 0.06);
-            color: var(--text-primary);
-        }
-
-        .avatar-ai {
-            background: linear-gradient(145deg, #0d9488, #0f766e);
-            box-shadow: 0 2px 8px rgba(13, 148, 136, 0.35);
-        }
-
-        .avatar-user {
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            color: var(--text-secondary);
-        }
-
-        .faq-btn {
-            background: rgba(255, 255, 255, 0.65);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(0, 0, 0, 0.06);
-            color: var(--text-secondary);
-        }
-
-        .faq-btn:hover {
-            background: rgba(255, 255, 255, 0.95);
-            color: var(--text-primary);
-            border-color: rgba(13, 148, 136, 0.25);
-        }
-
         .playground-card {
             background: linear-gradient(135deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.88));
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.12);
         }
-
-        .prose { color: var(--text-primary); font-size: 0.9375rem; line-height: 1.65; }
-        .prose p { margin-bottom: 0.75rem; color: var(--text-secondary); }
-        .prose p:last-child { margin-bottom: 0; }
-        .prose strong { color: var(--text-primary); font-weight: 600; }
-        .prose h1, .prose h2, .prose h3 { color: var(--text-primary); font-weight: 600; margin: 0.75rem 0 0.35rem; font-size: 1rem; }
-        .prose ul, .prose ol { padding-left: 1.25rem; margin: 0.5rem 0; color: var(--text-secondary); }
-        .prose li { margin: 0.25rem 0; }
-        .prose code {
-            font-size: 0.8em;
-            background: rgba(0, 0, 0, 0.05);
-            padding: 0.1rem 0.35rem;
-            border-radius: 4px;
-            color: #0f766e;
-        }
-        .prose pre {
-            background: #1e293b;
-            color: #e2e8f0;
-            padding: 0.875rem 1rem;
-            border-radius: 0.65rem;
-            overflow-x: auto;
-            font-size: 0.8125rem;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-        .prose table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: 0.8125rem; }
-        .prose th, .prose td { border: 1px solid rgba(0, 0, 0, 0.08); padding: 0.45rem 0.65rem; text-align: left; }
-        .prose th { background: rgba(0, 0, 0, 0.04); color: var(--text-primary); font-weight: 600; }
 
         .details-glass summary {
             cursor: pointer;
@@ -149,9 +22,11 @@
 
         #chatMessages {
             scrollbar-width: thin;
-            scrollbar-color: rgba(0,0,0,0.15) transparent;
+            scrollbar-color: rgba(100, 116, 139, 0.25) transparent;
         }
 
+        @media (max-width: 768px) {
+            #sidebar {
         @media (max-width: 768px) {
             #sidebar {
                 position: fixed;
@@ -260,18 +135,19 @@
         <div class="flex-1 flex flex-col h-full relative overflow-hidden min-w-0">
 
             <header class="h-14 glass-bar flex items-center justify-between px-4 sm:px-5 z-10 flex-shrink-0">
-                <div class="flex items-center gap-2 min-w-0">
-                    <a href="/" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-sm shrink-0 hidden sm:inline">Home</a>
-                    <button type="button" onclick="toggleSidebar()" class="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-lg hover:bg-black/5" aria-label="Toggle sidebar">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <a href="/" class="text-[var(--color-text-muted)] hover:text-[var(--color-text)] text-sm shrink-0 flex items-center gap-1 font-medium transition-colors">Home</a>
+                    <span class="text-black/10">|</span>
+                    <button type="button" onclick="toggleSidebar()" class="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-lg hover:bg-black/5 transition-colors shrink-0" aria-label="Toggle sidebar" title="Toggle sidebar">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                     </button>
-                    <div class="min-w-0">
-                        <h1 class="font-semibold text-[var(--text-primary)] text-sm truncate">Chat</h1>
-                        <p class="text-[11px] text-[var(--text-muted)] truncate">Pandas engine{% if has_gemini_key %} + Gemini{% endif %}</p>
+                    <div class="min-w-0 flex items-baseline gap-2">
+                        <h1 class="font-semibold text-[var(--color-text)] text-sm truncate">Inventory Analyst</h1>
+                        <span class="text-[11px] text-[var(--color-text-muted)] truncate hidden md:inline">Pandas engine</span>
                     </div>
                 </div>
 
-                <div class="flex items-center flex-shrink-0">
+                <div class="flex items-center gap-2 flex-shrink-0">
                     {% if has_gemini_key %}
                     <span class="inline-flex items-center text-[11px] font-medium px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-900 border border-emerald-500/20">
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>Gemini
@@ -281,6 +157,7 @@
                         <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>Fallback mode
                     </span>
                     {% endif %}
+                    {% include 'partials/theme_toggle.html' %}
                 </div>
             </header>
 
