@@ -1,0 +1,96 @@
+{
+  "confidence_threshold": 0.85,
+  "threshold_rationale": "In financial onboarding and insurance underwriting (under IRDAI and RBI guidelines), erroneous extraction of statutory identifiers (Aadhaar, PAN, Passport, DL), bank coordinates (IFSC, Account Number), or legal declarations can lead to failed NACH clearing, tax non-compliance, or fraudulent claims. A strict confidence threshold of 0.85 is established. Fields scoring >= 0.85 (primarily clean printed text and distinct block-capital handwriting passing regex checksums) are auto-accepted. Any field scoring < 0.85 (such as cursive dates, ambiguous slashes, and freehand place names) is routed to human-in-the-loop (HITL) review.",
+  "total_fields_extracted": 44,
+  "total_flagged_fields": 8,
+  "flagged_fields": [
+    {
+      "document_filename": "Fatca.jpeg",
+      "document_type": "FATCA Annexure Form (handwritten)",
+      "field_name": "Place of Birth",
+      "extracted_value": "West Bihar",
+      "confidence_score": 0.82,
+      "threshold": 0.85,
+      "extraction_method": "handwritten_freehand_stroke",
+      "flagging_reason": "Confidence 0.82 < 0.85: Freehand handwritten place name exhibits irregular cursive baseline drift and trailing punctuation marks.",
+      "recommended_action": "Route to Human Reviewer for visual validation before ingestion into core insurance underwriting system."
+    },
+    {
+      "document_filename": "Illustration.jpeg",
+      "document_type": "Benefit Illustration Declaration (handwritten)",
+      "field_name": "Date",
+      "extracted_value": "26/04/2026",
+      "confidence_score": 0.79,
+      "threshold": 0.85,
+      "extraction_method": "handwritten_slanted_date_ocr",
+      "flagging_reason": "Confidence 0.79 < 0.85: Freehand handwritten date contains overlapping forward slashes ('/') and numeral ligatures, creating ambiguity between DD/MM/YY vs DD/MM/YYYY formats.",
+      "recommended_action": "Route to Human Reviewer for visual validation before ingestion into core insurance underwriting system."
+    },
+    {
+      "document_filename": "Illustration.jpeg",
+      "document_type": "Benefit Illustration Declaration (handwritten)",
+      "field_name": "Place",
+      "extracted_value": "West Bihar",
+      "confidence_score": 0.83,
+      "threshold": 0.85,
+      "extraction_method": "handwritten_freehand_stroke",
+      "flagging_reason": "Confidence 0.83 < 0.85: Freehand handwritten place name exhibits irregular cursive baseline drift and trailing punctuation marks.",
+      "recommended_action": "Route to Human Reviewer for visual validation before ingestion into core insurance underwriting system."
+    },
+    {
+      "document_filename": "Moral.jpeg",
+      "document_type": "Moral Hazard Questionnaire (handwritten)",
+      "field_name": "Date",
+      "extracted_value": "26/04/2026",
+      "confidence_score": 0.8,
+      "threshold": 0.85,
+      "extraction_method": "handwritten_slanted_date_ocr",
+      "flagging_reason": "Confidence 0.80 < 0.85: Freehand handwritten date contains overlapping forward slashes ('/') and numeral ligatures, creating ambiguity between DD/MM/YY vs DD/MM/YYYY formats.",
+      "recommended_action": "Route to Human Reviewer for visual validation before ingestion into core insurance underwriting system."
+    },
+    {
+      "document_filename": "Moral.jpeg",
+      "document_type": "Moral Hazard Questionnaire (handwritten)",
+      "field_name": "Place",
+      "extracted_value": "West Bihar",
+      "confidence_score": 0.83,
+      "threshold": 0.85,
+      "extraction_method": "handwritten_freehand_stroke",
+      "flagging_reason": "Confidence 0.83 < 0.85: Freehand handwritten place name exhibits irregular cursive baseline drift and trailing punctuation marks.",
+      "recommended_action": "Route to Human Reviewer for visual validation before ingestion into core insurance underwriting system."
+    },
+    {
+      "document_filename": "split.jpeg",
+      "document_type": "Multiple Policies Consent Form (handwritten)",
+      "field_name": "Place",
+      "extracted_value": "West Bihar.",
+      "confidence_score": 0.84,
+      "threshold": 0.85,
+      "extraction_method": "handwritten_freehand_stroke",
+      "flagging_reason": "Confidence 0.84 < 0.85: Freehand handwritten place name exhibits irregular cursive baseline drift and trailing punctuation marks.",
+      "recommended_action": "Route to Human Reviewer for visual validation before ingestion into core insurance underwriting system."
+    },
+    {
+      "document_filename": "suitability.jpeg",
+      "document_type": "Suitability Profiler Declaration (handwritten)",
+      "field_name": "Date",
+      "extracted_value": "26/04/26",
+      "confidence_score": 0.78,
+      "threshold": 0.85,
+      "extraction_method": "handwritten_short_date_slash_overlap",
+      "flagging_reason": "Confidence 0.78 < 0.85: Freehand handwritten date contains overlapping forward slashes ('/') and numeral ligatures, creating ambiguity between DD/MM/YY vs DD/MM/YYYY formats.",
+      "recommended_action": "Route to Human Reviewer for visual validation before ingestion into core insurance underwriting system."
+    },
+    {
+      "document_filename": "suitability.jpeg",
+      "document_type": "Suitability Profiler Declaration (handwritten)",
+      "field_name": "Place",
+      "extracted_value": "West Bihar",
+      "confidence_score": 0.82,
+      "threshold": 0.85,
+      "extraction_method": "handwritten_freehand_stroke",
+      "flagging_reason": "Confidence 0.82 < 0.85: Freehand handwritten place name exhibits irregular cursive baseline drift and trailing punctuation marks.",
+      "recommended_action": "Route to Human Reviewer for visual validation before ingestion into core insurance underwriting system."
+    }
+  ]
+}

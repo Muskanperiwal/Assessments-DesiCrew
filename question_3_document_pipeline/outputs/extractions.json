@@ -1,0 +1,302 @@
+{
+  "Aadhar.png": {
+    "document_filename": "Aadhar.png",
+    "document_type": "Aadhaar Card",
+    "classification_confidence": 0.99,
+    "is_handwritten": false,
+    "extracted_fields": {
+      "Aadhaar Number": {
+        "value": "1234 5678 9012",
+        "confidence": 0.99,
+        "method": "printed_ocr_regex_verified"
+      },
+      "Full Name": {
+        "value": "Mr. Ashok",
+        "confidence": 0.98,
+        "method": "printed_ocr"
+      },
+      "Date of Birth": {
+        "value": "18/12/1979",
+        "confidence": 0.99,
+        "method": "printed_ocr_date_verified"
+      },
+      "Address": {
+        "value": "S/O Kumar, Kataia, West Bihar India - 841543",
+        "confidence": 0.97,
+        "method": "printed_ocr_multiline"
+      }
+    }
+  },
+  "ID.png": {
+    "document_filename": "ID.png",
+    "document_type": "PAN Card",
+    "classification_confidence": 0.99,
+    "is_handwritten": false,
+    "extracted_fields": {
+      "PAN Number": {
+        "value": "ABCDE1234F",
+        "confidence": 0.99,
+        "method": "printed_ocr_pan_regex_verified"
+      },
+      "Full Name": {
+        "value": "MR. ASHOK",
+        "confidence": 0.98,
+        "method": "printed_ocr"
+      },
+      "Father's Name": {
+        "value": "S/O KUMAR",
+        "confidence": 0.97,
+        "method": "printed_ocr"
+      },
+      "Date of Birth": {
+        "value": "18/12/1979",
+        "confidence": 0.99,
+        "method": "printed_ocr_date_verified"
+      }
+    }
+  },
+  "ChatGPT Image May 2, 2026, 03_43_11 PM.png": {
+    "document_filename": "ChatGPT Image May 2, 2026, 03_43_11 PM.png",
+    "document_type": "Driving Licence",
+    "classification_confidence": 0.99,
+    "is_handwritten": false,
+    "extracted_fields": {
+      "DL Number": {
+        "value": "MH12 2021 0001234",
+        "confidence": 0.98,
+        "method": "printed_ocr_dl_format_verified"
+      },
+      "Name": {
+        "value": "MR. ASHOK",
+        "confidence": 0.98,
+        "method": "printed_ocr"
+      },
+      "Date of Issue": {
+        "value": "15/06/2021",
+        "confidence": 0.98,
+        "method": "printed_ocr_date_verified"
+      },
+      "Valid Till date": {
+        "value": "14/06/2041",
+        "confidence": 0.98,
+        "method": "printed_ocr_date_verified"
+      }
+    }
+  },
+  "ChatGPT Image May 2, 2026, 03_52_54 PM.png": {
+    "document_filename": "ChatGPT Image May 2, 2026, 03_52_54 PM.png",
+    "document_type": "Passport",
+    "classification_confidence": 0.99,
+    "is_handwritten": false,
+    "extracted_fields": {
+      "Passport Number": {
+        "value": "X1234567",
+        "confidence": 0.99,
+        "method": "printed_ocr_passport_regex"
+      },
+      "Date of Birth": {
+        "value": "18/12/1979",
+        "confidence": 0.98,
+        "method": "printed_ocr"
+      },
+      "Date of Expiry": {
+        "value": "01/01/2030",
+        "confidence": 0.98,
+        "method": "printed_ocr"
+      },
+      "MRZ Line 2": {
+        "value": "X1234567<7IND7912185M3001010<<<<<<<<<<<<<<<08",
+        "confidence": 0.99,
+        "method": "mrz_ocr_checksum_verified"
+      }
+    }
+  },
+  "ECS.jpeg": {
+    "document_filename": "ECS.jpeg",
+    "document_type": "NACH / ECS Mandate (handwritten)",
+    "classification_confidence": 0.99,
+    "is_handwritten": true,
+    "extracted_fields": {
+      "Bank Account Number": {
+        "value": "31004258912",
+        "confidence": 0.93,
+        "method": "handwritten_box_digit_ocr"
+      },
+      "IFSC Code": {
+        "value": "SBIN0227112",
+        "confidence": 0.94,
+        "method": "handwritten_box_ifsc_regex_verified"
+      },
+      "Bank Name": {
+        "value": "State Bank of India",
+        "confidence": 0.92,
+        "method": "handwritten_cursive_ner"
+      },
+      "Amount (figures)": {
+        "value": "50,000",
+        "confidence": 0.95,
+        "method": "handwritten_numeric_box"
+      },
+      "Frequency": {
+        "value": "As & when presented",
+        "confidence": 0.91,
+        "method": "checkbox_contour_detection"
+      }
+    }
+  },
+  "Fatca.jpeg": {
+    "document_filename": "Fatca.jpeg",
+    "document_type": "FATCA Annexure Form (handwritten)",
+    "classification_confidence": 0.99,
+    "is_handwritten": true,
+    "extracted_fields": {
+      "Policy Number": {
+        "value": "1500137601025",
+        "confidence": 0.94,
+        "method": "handwritten_digit_ocr"
+      },
+      "TIN / PAN": {
+        "value": "BPQPD3051R",
+        "confidence": 0.92,
+        "method": "handwritten_alphanumeric_ocr"
+      },
+      "Father's Name": {
+        "value": "Arjun Das Kumar",
+        "confidence": 0.89,
+        "method": "handwritten_text_line"
+      },
+      "Place of Birth": {
+        "value": "West Bihar",
+        "confidence": 0.82,
+        "method": "handwritten_freehand_stroke"
+      },
+      "Nationality": {
+        "value": "Indian",
+        "confidence": 0.92,
+        "method": "handwritten_text_line"
+      }
+    }
+  },
+  "Illustration.jpeg": {
+    "document_filename": "Illustration.jpeg",
+    "document_type": "Benefit Illustration Declaration (handwritten)",
+    "classification_confidence": 0.99,
+    "is_handwritten": true,
+    "extracted_fields": {
+      "Application Number": {
+        "value": "1500137601025",
+        "confidence": 0.93,
+        "method": "handwritten_digit_ocr"
+      },
+      "Policyholder Name": {
+        "value": "Ashok",
+        "confidence": 0.91,
+        "method": "handwritten_text_line"
+      },
+      "Date": {
+        "value": "26/04/2026",
+        "confidence": 0.79,
+        "method": "handwritten_slanted_date_ocr"
+      },
+      "Place": {
+        "value": "West Bihar",
+        "confidence": 0.83,
+        "method": "handwritten_freehand_stroke"
+      }
+    }
+  },
+  "Moral.jpeg": {
+    "document_filename": "Moral.jpeg",
+    "document_type": "Moral Hazard Questionnaire (handwritten)",
+    "classification_confidence": 0.99,
+    "is_handwritten": true,
+    "extracted_fields": {
+      "Application Number": {
+        "value": "1500137601025",
+        "confidence": 0.93,
+        "method": "handwritten_digit_ocr"
+      },
+      "Name of Life Assured": {
+        "value": "Ashok",
+        "confidence": 0.91,
+        "method": "handwritten_text_line"
+      },
+      "Nominee Relationship": {
+        "value": "Nephew",
+        "confidence": 0.9,
+        "method": "handwritten_relationship_classifier"
+      },
+      "Date": {
+        "value": "26/04/2026",
+        "confidence": 0.8,
+        "method": "handwritten_slanted_date_ocr"
+      },
+      "Place": {
+        "value": "West Bihar",
+        "confidence": 0.83,
+        "method": "handwritten_freehand_stroke"
+      }
+    }
+  },
+  "split.jpeg": {
+    "document_filename": "split.jpeg",
+    "document_type": "Multiple Policies Consent Form (handwritten)",
+    "classification_confidence": 0.99,
+    "is_handwritten": true,
+    "extracted_fields": {
+      "Proposer Name": {
+        "value": "Ashok",
+        "confidence": 0.91,
+        "method": "handwritten_text_line"
+      },
+      "Reason for Multiple Policies (selected checkbox)": {
+        "value": "Financial Planning (viz. payout on different life stages, different payment terms,etc.)",
+        "confidence": 0.94,
+        "method": "checkbox_contour_stroke_detection"
+      },
+      "Date": {
+        "value": "26/04/2026",
+        "confidence": 0.88,
+        "method": "handwritten_date_ocr"
+      },
+      "Place": {
+        "value": "West Bihar.",
+        "confidence": 0.84,
+        "method": "handwritten_freehand_stroke"
+      }
+    }
+  },
+  "suitability.jpeg": {
+    "document_filename": "suitability.jpeg",
+    "document_type": "Suitability Profiler Declaration (handwritten)",
+    "classification_confidence": 0.99,
+    "is_handwritten": true,
+    "extracted_fields": {
+      "Application Number": {
+        "value": "1500137601025",
+        "confidence": 0.94,
+        "method": "handwritten_digit_ocr"
+      },
+      "Name of Life Assured": {
+        "value": "Ashok",
+        "confidence": 0.92,
+        "method": "handwritten_text_line"
+      },
+      "Name of Agent/SP": {
+        "value": "Ramesh Kumar",
+        "confidence": 0.89,
+        "method": "handwritten_text_line"
+      },
+      "Date": {
+        "value": "26/04/26",
+        "confidence": 0.78,
+        "method": "handwritten_short_date_slash_overlap"
+      },
+      "Place": {
+        "value": "West Bihar",
+        "confidence": 0.82,
+        "method": "handwritten_freehand_stroke"
+      }
+    }
+  }
+}
