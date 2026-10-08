@@ -89,6 +89,50 @@ def markdown_table(frame: pd.DataFrame, columns: list, limit: int = 8) -> str:
     return "\n".join(lines)
 
 
+import re
+
+
+class _ResilientSeries(pd.Series):
+    @property
+    def _constructor(self):
+        return _ResilientSeries
+
+    def __getitem__(self, key):
+        try:
+            return super().__getitem__(key)
+        except KeyError:
+            if isinstance(key, str):
+                norm_key = re.sub(r'[\s\-/]+', '', key).lower()
+                for idx in self.index:
+                    if isinstance(idx, str) and re.sub(r'[\s\-/]+', '', idx).lower() == norm_key:
+                        return super().__getitem__(idx)
+            raise
+
+
+class _ResilientDataFrame(pd.DataFrame):
+    @property
+    def _constructor(self):
+        return _ResilientDataFrame
+
+    @property
+    def _constructor_sliced(self):
+        return _ResilientSeries
+
+    def __getitem__(self, key):
+        try:
+            return super().__getitem__(key)
+        except KeyError:
+            if isinstance(key, str):
+                # O(1) cached lookup mapping normalized keys to exact column names
+                if not hasattr(self, '_cached_column_map') or len(self._cached_column_map) != len(self.columns):
+                    object.__setattr__(self, '_cached_column_map', {re.sub(r'[\s\-/]+', '', c).lower(): c for c in self.columns})
+                norm_key = re.sub(r'[\s\-/]+', '', key).lower()
+                matched_col = self._cached_column_map.get(norm_key)
+                if matched_col and matched_col in self.columns:
+                    return super().__getitem__(matched_col)
+            raise
+
+
 def run_user_code(df: pd.DataFrame, code: str) -> dict:
     """Run analyst code with df, pd, np, and plotting libraries when installed."""
     code_lines = [line for line in code.strip().split("\n") if not line.strip().startswith("```")]
@@ -96,7 +140,9 @@ def run_user_code(df: pd.DataFrame, code: str) -> dict:
     if not clean_code:
         return {"ok": False, "output": "No Python code provided.", "charts": [], "code": ""}
 
-    local_env = {"df": df, "pd": pd, "np": np}
+    # Always execute on an isolated deep copy wrapped in ResilientDataFrame
+    # so awkward spacing/newline variations in column names never crash with KeyError
+    local_env = {"df": _ResilientDataFrame(df.copy(deep=True)), "pd": pd, "np": np}
     try:
         plt, sns = _plot_modules()
         plt.close("all")
