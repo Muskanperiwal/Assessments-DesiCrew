@@ -97,7 +97,7 @@
                         </div>
                         <div class="mt-3 flex gap-2">
                             <button type="submit" id="submitBtn" class="btn btn-primary flex-1">Process document</button>
-                            <button type="button" id="stopBtn" onclick="stopRequest()" class="hidden btn bg-red-600 hover:bg-red-500 text-white shrink-0">Stop</button>
+                            <button type="button" id="stopBtn" onclick="stopRequest()" class="hidden btn btn-stop shrink-0">Stop</button>
                         </div>
                     </form>
                 </div>
@@ -105,7 +105,7 @@
                 {% if sample_files %}
                 <div class="glass-panel rounded-2xl p-4">
                     <p class="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)] mb-2">Sample corpus ({{ sample_files|length }})</p>
-                    <select id="sampleSelect" class="w-full text-sm rounded-lg border border-black/10 dark:border-white/15 bg-white/80 dark:bg-slate-800 px-3 py-2 text-[var(--color-text)]">
+                    <select id="sampleSelect" class="app-input">
                         <option value="">Choose a sample…</option>
                         {% for sf in sample_files %}
                         <option value="{{ sf }}">{{ sf }}</option>
@@ -143,7 +143,7 @@
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                     </svg>
                     <p id="loadingLabel" class="text-sm font-medium mt-3 text-[var(--color-text)]">Running vision extraction…</p>
-                    <button type="button" onclick="stopRequest()" class="mt-4 btn btn-sm bg-red-600 hover:bg-red-500 text-white">Stop</button>
+                    <button type="button" onclick="stopRequest()" id="stopBtnLoading" class="mt-4 btn btn-stop btn-sm hidden">Stop</button>
                 </div>
 
                 <div id="batchSummary" class="hidden glass-panel rounded-2xl p-4 task3-table"></div>
@@ -374,10 +374,15 @@
         const loadingIndicator = document.getElementById('loadingIndicator');
         const submitBtn = document.getElementById('submitBtn');
         const stopBtn = document.getElementById('stopBtn');
+        const stopBtnLoading = document.getElementById('stopBtnLoading');
         const batchBtn = document.getElementById('batchBtn');
 
         function isAbortError(err) {
             return err && (err.name === 'AbortError' || err.message === 'The user aborted a request.');
+        }
+
+        function stopRequest() {
+            if (requestAbortController) requestAbortController.abort();
         }
 
         function startStages(kind) {
@@ -419,6 +424,7 @@
             if (submitBtn) submitBtn.disabled = busy;
             if (batchBtn) batchBtn.disabled = busy;
             if (stopBtn) stopBtn.classList.toggle('hidden', !busy);
+            if (stopBtnLoading) stopBtnLoading.classList.toggle('hidden', !busy);
         }
 
         /** Only one main panel visible: idle | loading | results | error */

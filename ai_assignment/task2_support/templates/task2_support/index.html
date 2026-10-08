@@ -68,7 +68,6 @@
         <div id="loadingIndicator" class="hidden my-2 flex items-center gap-2 text-[var(--color-teal)] text-xs font-medium">
             <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
             <span id="loadingText">Answering…</span>
-            <button type="button" onclick="stopRequest()" class="ml-1 px-2 py-0.5 rounded-md border border-red-500/30 bg-red-500/10 text-red-800 text-[11px] font-semibold hover:bg-red-500/20">Stop</button>
         </div>
 
         <form id="chatForm" onsubmit="handleSubmit(event)" class="mt-3 glass-panel rounded-[var(--radius-xl)] p-2 flex items-center gap-2">
@@ -78,7 +77,7 @@
                 placeholder="Message support assistant…"
                 class="flex-1 bg-transparent px-3 py-2.5 text-sm outline-none text-[var(--color-text)] placeholder-[var(--color-text-muted)] resize-none max-h-32"
             ></textarea>
-            <button type="button" id="stopBtn" onclick="stopRequest()" class="hidden btn btn-sm shrink-0 bg-red-600 hover:bg-red-500 text-white">Stop</button>
+            <button type="button" id="stopBtn" onclick="stopRequest()" class="hidden btn btn-stop btn-sm shrink-0">Stop</button>
             <button type="submit" id="sendBtn" class="btn btn-primary btn-sm shrink-0">Send</button>
         </form>
     </main>

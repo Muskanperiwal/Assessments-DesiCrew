@@ -243,13 +243,91 @@
         border-radius: var(--radius-md);
         border: 1px solid transparent;
         cursor: pointer;
-        transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+        transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease, filter 0.2s ease;
         text-decoration: none;
+        will-change: transform;
+    }
+
+    .btn:hover:not(:disabled) {
+        transform: translateY(-1px);
+    }
+
+    .btn:active:not(:disabled) {
+        transform: translateY(0) scale(0.97);
     }
 
     .btn:disabled {
         opacity: 0.45;
         cursor: not-allowed;
+    }
+
+    /* Soft stop — only used while a request is in flight */
+    .btn-stop {
+        background: rgba(15, 23, 42, 0.06);
+        color: #475569;
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        box-shadow: none;
+    }
+    .btn-stop:hover:not(:disabled) {
+        background: rgba(15, 23, 42, 0.1);
+        color: #0f172a;
+        border-color: rgba(15, 23, 42, 0.18);
+        filter: none;
+    }
+    html[data-theme="dark"] .btn-stop,
+    html.dark .btn-stop {
+        background: rgba(255, 255, 255, 0.08);
+        color: #cbd5e1;
+        border-color: rgba(255, 255, 255, 0.14);
+    }
+    html[data-theme="dark"] .btn-stop:hover:not(:disabled),
+    html.dark .btn-stop:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.12);
+        color: #f1f5f9;
+    }
+
+    /* Form fields — theme-aware, never rely on Tailwind dark: media */
+    .app-input {
+        width: 100%;
+        font-family: inherit;
+        font-size: 0.875rem;
+        line-height: 1.4;
+        color: #0f172a !important;
+        background: #ffffff !important;
+        border: 1px solid rgba(15, 23, 42, 0.12) !important;
+        border-radius: var(--radius-lg);
+        padding: 0.625rem 0.875rem;
+        outline: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+        color-scheme: light;
+        caret-color: var(--color-teal);
+    }
+    .app-input::placeholder {
+        color: #94a3b8 !important;
+        opacity: 1;
+    }
+    .app-input:hover {
+        border-color: rgba(13, 148, 136, 0.35) !important;
+    }
+    .app-input:focus {
+        border-color: rgba(13, 148, 136, 0.55) !important;
+        box-shadow: 0 0 0 3px var(--color-teal-soft);
+    }
+    html[data-theme="dark"] .app-input,
+    html.dark .app-input {
+        color: #f1f5f9 !important;
+        background: #1e293b !important;
+        border-color: rgba(255, 255, 255, 0.14) !important;
+        color-scheme: dark;
+    }
+    html[data-theme="dark"] .app-input::placeholder,
+    html.dark .app-input::placeholder {
+        color: #64748b !important;
+    }
+    html[data-theme="dark"] .app-input:focus,
+    html.dark .app-input:focus {
+        border-color: rgba(45, 212, 191, 0.5) !important;
+        box-shadow: 0 0 0 3px var(--color-teal-soft);
     }
 
     .btn-primary {
@@ -432,7 +510,7 @@
         background: var(--chip-bg) !important;
         border: 1px solid var(--chip-border) !important;
         color: var(--chip-text) !important;
-        transition: all 0.15s ease;
+        transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
     }
 
     .faq-btn:hover,
@@ -441,6 +519,16 @@
         background: var(--chip-hover-bg) !important;
         border-color: var(--chip-hover-border) !important;
         color: var(--chip-hover-text) !important;
+        transform: translateY(-1px);
+    }
+
+    .faq-btn:active,
+    .chip-btn:active,
+    .sample-chip:active,
+    .schema-col:active,
+    .theme-toggle-btn:active,
+    a:active {
+        transform: scale(0.97);
     }
 
     .citation-highlight {
@@ -703,6 +791,68 @@
         border-color: rgba(13, 148, 136, 0.45);
         background: var(--color-surface);
         outline: none;
+    }
+
+    /* Page & interaction motion */
+    @media (prefers-reduced-motion: no-preference) {
+        body.app-theme {
+            animation: pageEnter 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        .anim-fade-up {
+            animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+        .anim-delay-1 { animation-delay: 0.06s; }
+        .anim-delay-2 { animation-delay: 0.12s; }
+        .anim-delay-3 { animation-delay: 0.18s; }
+        .anim-delay-4 { animation-delay: 0.24s; }
+
+        .card-lift {
+            transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+        }
+        .card-lift:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.1) !important;
+        }
+        html[data-theme="dark"] .card-lift:hover,
+        html.dark .card-lift:hover {
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
+        }
+        .card-lift:active {
+            transform: translateY(-1px) scale(0.99);
+        }
+
+        .modal-panel {
+            animation: modalIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        .glass-panel,
+        .glass-bar,
+        .glass-inset,
+        .glass-composer {
+            transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+        }
+    }
+
+    @keyframes pageEnter {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(14px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes modalIn {
+        from { opacity: 0; transform: translateY(10px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
     }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">

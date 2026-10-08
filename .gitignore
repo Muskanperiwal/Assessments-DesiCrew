@@ -56,3 +56,6 @@ start-tunnel.sh
 # Local images
 images/
 
+
+# LibreOffice lock files
+.~lock.*#

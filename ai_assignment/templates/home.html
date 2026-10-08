@@ -10,9 +10,9 @@
 </head>
 <body class="app-theme app-bg min-h-screen flex flex-col">
 
-    <header class="glass-bar sticky top-0 z-40">
+    <header class="glass-bar sticky top-0 z-40 anim-fade-up">
         <div class="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
-            <a href="/" class="flex items-center gap-2.5 font-semibold text-[var(--color-text)]">
+            <a href="/" class="flex items-center gap-2.5 font-semibold text-[var(--color-text)] transition-transform duration-200 active:scale-95">
                 <span class="w-8 h-8 rounded-[var(--radius-md)] bg-[var(--color-teal)] text-white text-xs font-bold flex items-center justify-center">AI</span>
                 <span>Assignment Suite</span>
             </a>
@@ -28,7 +28,7 @@
     </header>
 
     <main class="flex-1 flex flex-col items-center justify-center px-4 py-16 sm:py-24">
-        <div class="text-center max-w-lg mb-10">
+        <div class="text-center max-w-lg mb-10 anim-fade-up anim-delay-1">
             <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-[var(--color-text)]">
                 Three workspaces. One stack.
             </h1>
@@ -38,7 +38,7 @@
         </div>
 
         <div class="w-full max-w-3xl grid gap-3 sm:grid-cols-3">
-            <a href="/task1/" class="glass-panel rounded-[var(--radius-xl)] p-5 flex flex-col gap-3 hover:ring-2 hover:ring-[var(--color-teal)]/20 transition-all no-underline text-inherit">
+            <a href="/task1/" class="glass-panel card-lift anim-fade-up anim-delay-2 rounded-[var(--radius-xl)] p-5 flex flex-col gap-3 no-underline text-inherit">
                 <div class="flex items-center gap-2">
                     <span class="app-icon text-[var(--color-teal)]" aria-hidden="true"><svg><use href="#hi-chart-bar"/></svg></span>
                     <span class="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-teal)]">Task 1</span>
@@ -48,7 +48,7 @@
                 <span class="btn btn-primary btn-sm w-full mt-1">Open</span>
             </a>
 
-            <a href="/task2/" class="glass-panel rounded-[var(--radius-xl)] p-5 flex flex-col gap-3 hover:ring-2 hover:ring-[var(--color-emerald)]/20 transition-all no-underline text-inherit">
+            <a href="/task2/" class="glass-panel card-lift anim-fade-up anim-delay-3 rounded-[var(--radius-xl)] p-5 flex flex-col gap-3 no-underline text-inherit">
                 <div class="flex items-center gap-2">
                     <span class="app-icon text-[var(--color-emerald)]" aria-hidden="true"><svg><use href="#hi-chat-bubble-left-right"/></svg></span>
                     <span class="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-emerald)]">Task 2</span>
@@ -58,7 +58,7 @@
                 <span class="btn btn-primary btn-sm w-full mt-1">Open</span>
             </a>
 
-            <a href="/task3/" class="glass-panel rounded-[var(--radius-xl)] p-5 flex flex-col gap-3 hover:ring-2 hover:ring-[var(--color-teal)]/20 transition-all no-underline text-inherit">
+            <a href="/task3/" class="glass-panel card-lift anim-fade-up anim-delay-4 rounded-[var(--radius-xl)] p-5 flex flex-col gap-3 no-underline text-inherit">
                 <div class="flex items-center gap-2">
                     <span class="app-icon text-[var(--color-teal)]" aria-hidden="true"><svg><use href="#hi-document-text"/></svg></span>
                     <span class="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-teal)]">Task 3</span>
@@ -69,7 +69,7 @@
             </a>
         </div>
 
-        <p class="mt-10 text-[11px] text-[var(--color-text-muted)] text-center max-w-md">
+        <p class="mt-10 text-[11px] text-[var(--color-text-muted)] text-center max-w-md anim-fade-up anim-delay-4">
             {{ total_records }} inventory rows · {{ knowledge_docs_count }} policy docs · {{ sample_docs_count }} sample images
             {% if dataset_exists %} · dataset loaded{% endif %}
         </p>

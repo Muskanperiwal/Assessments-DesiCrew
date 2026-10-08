@@ -159,6 +159,9 @@
                     <form id="chatForm" onsubmit="handleSubmit(event)" class="glass-composer rounded-2xl p-2 flex items-end gap-2">
                         {% csrf_token %}
                         <textarea id="messageInput" rows="1" placeholder="Message inventory analyst…" class="w-full bg-transparent px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none"></textarea>
+                        <button type="button" id="stopBtn" onclick="stopRequest()" class="hidden btn btn-stop btn-sm p-2.5 !min-w-[2.5rem] flex-shrink-0" aria-label="Stop" title="Stop">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                        </button>
                         <button type="submit" id="sendBtn" class="btn btn-primary btn-sm p-2.5 !min-w-[2.5rem] flex-shrink-0" aria-label="Send">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"/></svg>
                         </button>
@@ -170,7 +173,7 @@
     </div>
 
     <div id="dataModal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="glass-panel rounded-2xl max-w-5xl w-full flex flex-col overflow-hidden max-h-[88vh]">
+        <div class="glass-panel modal-panel rounded-2xl max-w-5xl w-full flex flex-col overflow-hidden max-h-[88vh]">
             <div class="p-4 border-b border-black/5 flex items-center justify-between gap-3">
                 <div class="min-w-0">
                     <h3 class="font-semibold text-sm text-[var(--text-primary)]">Original inventory data</h3>
@@ -179,7 +182,7 @@
                 <button type="button" onclick="closeDataViewer()" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1.5 rounded-lg hover:bg-black/5" aria-label="Close">&times;</button>
             </div>
             <div class="px-4 py-3 border-b border-black/5">
-                <input id="dataFilter" type="search" placeholder="Filter rows…" class="w-full text-sm rounded-xl border border-black/10 bg-white/70 dark:bg-slate-800 px-3 py-2 text-[var(--color-text)] outline-none" oninput="renderDataTable()">
+                <input id="dataFilter" type="search" placeholder="Filter rows…" class="app-input" oninput="renderDataTable()" autocomplete="off">
             </div>
             <div class="flex-1 overflow-auto p-4">
                 <table class="data-table">
@@ -191,7 +194,7 @@
     </div>
 
     <div id="playgroundModal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="glass-panel rounded-2xl max-w-2xl w-full flex flex-col overflow-hidden max-h-[88vh]">
+        <div class="glass-panel modal-panel rounded-2xl max-w-2xl w-full flex flex-col overflow-hidden max-h-[88vh]">
             <div class="p-4 border-b border-black/5 flex items-center justify-between">
                 <div>
                     <h3 class="font-semibold text-sm text-[var(--text-primary)]">Python playground</h3>
@@ -206,7 +209,8 @@
                     <button type="button" class="chip-btn text-[11px] px-2.5 py-1 rounded-full" onclick="loadSnippet('chart')">Seaborn value chart</button>
                 </div>
                 <textarea id="playgroundCode" rows="6" class="code-surface w-full font-mono text-xs p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/40" placeholder="print(df.head())"></textarea>
-                <div class="flex justify-end">
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="stopPlayground()" id="stopPlaygroundBtn" class="hidden btn btn-stop btn-sm">Stop</button>
                     <button type="button" onclick="runPlaygroundCode()" id="runPlaygroundBtn" class="btn btn-primary btn-sm">Execute</button>
                 </div>
                 <pre id="playgroundOutput" class="code-surface text-xs p-3 rounded-xl min-h-[72px] font-mono">Run code to see results…</pre>
@@ -221,11 +225,24 @@
         const loadingIndicator = document.getElementById('loadingIndicator');
         const loadingText = document.getElementById('loadingText');
         const sendBtn = document.getElementById('sendBtn');
+        const stopBtn = document.getElementById('stopBtn');
         const sidebar = document.getElementById('sidebar');
         let conversationHistory = [];
         let sheetCache = null;
         let sortState = { col: null, dir: 1 };
+        let chatAbortController = null;
+        let playgroundAbortController = null;
         const welcomeHtml = chatMessages.innerHTML;
+
+        function isAbortError(err) {
+            return err && (err.name === 'AbortError' || err.message === 'The user aborted a request.');
+        }
+        function stopRequest() {
+            if (chatAbortController) chatAbortController.abort();
+        }
+        function stopPlayground() {
+            if (playgroundAbortController) playgroundAbortController.abort();
+        }
         const SNIPPETS = {
             head: "print(df.head(8))",
             low: "print(df.nsmallest(8, 'Hand-In-Stock')[['Product Name', 'Hand-In-Stock', 'Number of Units Sold']])",
@@ -283,6 +300,8 @@
             loadingIndicator.classList.toggle('hidden', !on);
             messageInput.disabled = on;
             sendBtn.disabled = on;
+            sendBtn.classList.toggle('hidden', on);
+            stopBtn.classList.toggle('hidden', !on);
         }
         function chartsHtml(data) {
             const list = data.charts || [];
@@ -321,36 +340,46 @@
         async function handleSubmit(e) {
             if (e) e.preventDefault();
             const text = messageInput.value.trim();
-            if (!text) return;
+            if (!text || chatAbortController) return;
             appendUserMessage(text);
             conversationHistory.push({ role: 'user', content: text });
             messageInput.value = '';
             messageInput.style.height = 'auto';
             setBusy(true, 'Thinking and running tools…');
+            chatAbortController = new AbortController();
             try {
                 const response = await fetch('/task1/api/chat/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
-                    body: JSON.stringify({ message: text, history: conversationHistory })
+                    body: JSON.stringify({ message: text, history: conversationHistory }),
+                    signal: chatAbortController.signal
                 });
                 if (!response.ok) throw new Error(`Server returned HTTP ${response.status}`);
                 const data = await response.json();
                 appendAssistantResponse(data);
                 conversationHistory.push({ role: 'assistant', content: data.reply || '' });
             } catch (err) {
-                appendAssistantResponse({ reply: `**Could not reach the agent:** ${err.message}` }, text);
+                if (isAbortError(err)) {
+                    appendAssistantResponse({ reply: '_Stopped by user._' });
+                } else {
+                    appendAssistantResponse({ reply: `**Could not reach the agent:** ${err.message}` }, text);
+                }
             } finally {
+                chatAbortController = null;
                 setBusy(false);
                 messageInput.focus();
             }
         }
         async function runInsight(key) {
+            if (chatAbortController) return;
             setBusy(true, 'Building chart and analysis…');
+            chatAbortController = new AbortController();
             try {
                 const response = await fetch('/task1/api/insight/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
-                    body: JSON.stringify({ insight: key })
+                    body: JSON.stringify({ insight: key }),
+                    signal: chatAbortController.signal
                 });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
@@ -359,8 +388,13 @@
                 conversationHistory.push({ role: 'user', content: data.question || '' });
                 conversationHistory.push({ role: 'assistant', content: data.reply || '' });
             } catch (err) {
-                appendAssistantResponse({ reply: `**Analysis failed:** ${err.message}` });
+                if (isAbortError(err)) {
+                    appendAssistantResponse({ reply: '_Stopped by user._' });
+                } else {
+                    appendAssistantResponse({ reply: `**Analysis failed:** ${err.message}` });
+                }
             } finally {
+                chatAbortController = null;
                 setBusy(false);
             }
         }
@@ -378,23 +412,31 @@
             const outputElem = document.getElementById('playgroundOutput');
             const chartBox = document.getElementById('playgroundCharts');
             const runBtn = document.getElementById('runPlaygroundBtn');
-            if (!code) return;
+            const stopPlaygroundBtn = document.getElementById('stopPlaygroundBtn');
+            if (!code || playgroundAbortController) return;
             runBtn.disabled = true;
+            stopPlaygroundBtn.classList.remove('hidden');
             outputElem.textContent = 'Executing…';
             chartBox.innerHTML = '';
+            playgroundAbortController = new AbortController();
             try {
                 const response = await fetch('/task1/api/playground/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
-                    body: JSON.stringify({ code })
+                    body: JSON.stringify({ code }),
+                    signal: playgroundAbortController.signal
                 });
                 const res = await response.json();
                 outputElem.textContent = res.output || res.error || 'No output';
                 chartBox.innerHTML = chartsHtml(res);
             } catch (err) {
-                outputElem.textContent = 'Execution error: ' + err.message;
+                outputElem.textContent = isAbortError(err)
+                    ? 'Stopped by user.'
+                    : ('Execution error: ' + err.message);
             } finally {
+                playgroundAbortController = null;
                 runBtn.disabled = false;
+                stopPlaygroundBtn.classList.add('hidden');
             }
         }
 
