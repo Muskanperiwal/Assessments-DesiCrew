@@ -67,10 +67,15 @@ class SupportRAGEngine:
     """Manages document parsing, ChromaDB indexing, and context retrieval."""
 
     def __init__(self, docs_dir: Optional[Path] = None, chroma_dir: Optional[Path] = None):
-        base_dir = getattr(settings, 'BASE_DIR', Path(__file__).resolve().parent.parent)
-        self.docs_dir = docs_dir or getattr(settings, 'DATA_DIR', base_dir / 'data') / 'support_documents'
-        self.fallback_docs_dir = getattr(settings, 'DATA_DIR', base_dir / 'data') / 'support_documents'
-        self.chroma_dir = chroma_dir or getattr(settings, 'DATA_DIR', base_dir / 'data') / 'chroma_db'
+        if settings.configured:
+            base_dir = getattr(settings, 'BASE_DIR', Path(__file__).resolve().parent.parent)
+            data_dir = getattr(settings, 'DATA_DIR', base_dir / 'data')
+        else:
+            base_dir = Path(__file__).resolve().parent.parent
+            data_dir = base_dir / 'data'
+        self.docs_dir = docs_dir or data_dir / 'support_documents'
+        self.fallback_docs_dir = data_dir / 'support_documents'
+        self.chroma_dir = chroma_dir or data_dir / 'chroma_db'
         
         self.collection_name = "support_knowledge_base"
         self._client = None
@@ -376,130 +381,3 @@ def format_context(chunks: List[Dict[str, Any]]) -> str:
     return RAG_ENGINE.format_context_for_prompt(chunks)
 
 
-class RAGEngine:
-    """Combines Markdown section indexing and PyMuPDF chunking for support documents."""
-    def __init__(self, doc_paths: Optional[List[Any]] = None):
-        base_dir = getattr(settings, 'BASE_DIR', Path(__file__).resolve().parent.parent)
-        if doc_paths is None:
-            self.doc_paths = [getattr(settings, 'DATA_DIR', base_dir / 'data') / 'support_documents']
-        elif isinstance(doc_paths, (str, Path)):
-            self.doc_paths = [Path(doc_paths)]
-        else:
-            self.doc_paths = [Path(p) for p in doc_paths]
-
-        self.sections: List[Dict[str, Any]] = []
-        self.build_index()
-
-    def build_index(self):
-        self.sections = []
-        for path in self.doc_paths:
-            if not path.exists():
-                continue
-            if path.is_dir():
-                for file_p in sorted(path.glob("*")):
-                    if file_p.suffix.lower() in [".md", ".txt", ".pdf"]:
-                        self._index_file(file_p)
-            elif path.is_file():
-                self._index_file(path)
-
-    def _index_file(self, file_path: Path):
-        try:
-            if file_path.suffix.lower() == '.pdf' and pymupdf is not None:
-                doc = pymupdf.open(str(file_path))
-                for page_idx, page in enumerate(doc):
-                    text = page.get_text()
-                    if text.strip():
-                        self.sections.append({
-                            "doc_name": file_path.name,
-                            "doc_title": file_path.stem.replace('_', ' '),
-                            "section_id": f"P{page_idx+1}",
-                            "section_title": f"Page {page_idx+1}",
-                            "citation": f"{file_path.name} Page {page_idx+1}",
-                            "content": text.strip(),
-                            "key_facts": [line.strip('- *') for line in text.split('\n') if len(line.strip()) > 20][:3]
-                        })
-            else:
-                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    content = f.read()
-                self._parse_markdown(file_path.name, content)
-        except Exception as e:
-            logger.error(f"Error indexing {file_path}: {e}")
-
-    def _parse_markdown(self, filename: str, content: str):
-        lines = content.split('\n')
-        doc_title = filename.replace('.md', '').replace('_', ' ')
-        current_section = None
-        current_lines = []
-
-        for line in lines:
-            line_str = line.strip()
-            if line_str.startswith('# ') and not current_section:
-                doc_title = line_str[2:].strip()
-                continue
-
-            if line_str.startswith('## '):
-                if current_section and current_lines:
-                    current_section['content'] = '\n'.join(current_lines).strip()
-                    current_section['key_facts'] = [l.strip('- *') for l in current_lines if l.strip().startswith(('-', '*')) and len(l.strip()) > 10][:4]
-                    self.sections.append(current_section)
-                    current_lines = []
-
-                header_text = line_str[3:].strip()
-                match_sec = re.match(r'(§\s*\d+[\.\d]*)\s*[:\.\-]?\s*(.*)', header_text)
-                if match_sec:
-                    sec_id = match_sec.group(1).replace('§', '').strip()
-                    sec_title = match_sec.group(2).strip()
-                else:
-                    sec_id = f"{len(self.sections) + 1}.0"
-                    sec_title = header_text
-
-                current_section = {
-                    "doc_name": filename,
-                    "doc_title": doc_title,
-                    "section_id": sec_id,
-                    "section_title": sec_title,
-                    "citation": f"{doc_title} § {sec_id} - {sec_title}",
-                    "content": "",
-                    "key_facts": []
-                }
-            elif current_section:
-                current_lines.append(line)
-
-        if current_section and current_lines:
-            current_section['content'] = '\n'.join(current_lines).strip()
-            current_section['key_facts'] = [l.strip('- *') for l in current_lines if l.strip().startswith(('-', '*')) and len(l.strip()) > 10][:4]
-            self.sections.append(current_section)
-
-    def search(self, query: str, top_k: int = 2) -> List[Dict[str, Any]]:
-        if not self.sections:
-            return []
-
-        all_tokens = [w.lower() for w in re.findall(r'\b\w+\b', query)]
-        q_terms = [w for w in all_tokens if len(w) > 2 and w not in STOP_WORDS]
-        if not q_terms:
-            q_terms = [w for w in all_tokens if len(w) > 2]
-
-        scored = []
-        for sec in self.sections:
-            score = 0
-            t_low = sec['section_title'].lower()
-            c_low = sec['content'].lower()
-            d_low = sec['doc_title'].lower()
-
-            for term in q_terms:
-                if re.search(r'\b' + re.escape(term) + r'\b', t_low):
-                    score += 20
-                elif term in t_low:
-                    score += 10
-                if term in d_low:
-                    score += 8
-                matches = len(re.findall(r'\b' + re.escape(term) + r'\b', c_low))
-                score += min(matches * 2, 12)
-
-            if score > 0:
-                scored.append((score, sec))
-
-        scored.sort(key=lambda x: x[0], reverse=True)
-        if scored:
-            return [s[1] for s in scored[:top_k]]
-        return self.sections[:top_k]

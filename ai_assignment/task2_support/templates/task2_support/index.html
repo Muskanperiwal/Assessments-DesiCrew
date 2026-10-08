@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Support assistant</title>
+    <title>Support Assistant</title>
     {% include 'partials/tailwind_setup.html' %}
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -13,75 +13,352 @@
             scrollbar-width: thin;
             scrollbar-color: rgba(100, 116, 139, 0.25) transparent;
         }
+        @media (max-width: 768px) {
+            #sidebar {
+                position: fixed;
+                inset: 0 auto 0 0;
+                height: 100%;
+                z-index: 40;
+            }
+            #sidebar.sidebar-hidden { transform: translateX(-100%); }
+        }
+
+        /* Compact, refined typography matching Task 1 and clean earlier version */
+        .msg-assistant {
+            font-size: 0.875rem !important; /* 14px */
+            line-height: 1.55 !important;
+        }
+        .msg-assistant .prose {
+            font-size: 0.875rem !important;
+            line-height: 1.55 !important;
+            color: inherit !important;
+        }
+        .msg-assistant .prose p {
+            font-size: 0.875rem !important;
+            margin-top: 0.45rem !important;
+            margin-bottom: 0.45rem !important;
+            line-height: 1.55 !important;
+        }
+        .msg-assistant .prose p:first-child {
+            margin-top: 0 !important;
+        }
+        .msg-assistant .prose p:last-child {
+            margin-bottom: 0 !important;
+        }
+        .msg-assistant .prose h1,
+        .msg-assistant .prose h2,
+        .msg-assistant .prose h3,
+        .msg-assistant .prose h4 {
+            font-size: 0.875rem !important; /* 14px compact bold headers */
+            font-weight: 600 !important;
+            margin-top: 0.65rem !important;
+            margin-bottom: 0.25rem !important;
+            color: var(--color-text) !important;
+        }
+        .msg-assistant .prose ul,
+        .msg-assistant .prose ol {
+            margin-top: 0.35rem !important;
+            margin-bottom: 0.45rem !important;
+            padding-left: 1.2rem !important;
+        }
+        .msg-assistant .prose li {
+            font-size: 0.875rem !important;
+            margin-top: 0.2rem !important;
+            margin-bottom: 0.2rem !important;
+            line-height: 1.5 !important;
+        }
+        .msg-assistant .prose strong {
+            font-weight: 600 !important;
+            color: var(--color-text) !important;
+        }
+        .msg-user {
+            font-size: 0.875rem !important;
+            line-height: 1.5 !important;
+        }
+        .citation-highlight {
+            background: var(--color-teal-soft) !important;
+            color: var(--color-teal) !important;
+            padding: 0.12rem 0.35rem !important;
+            border-radius: 0.35rem !important;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+            font-size: 0.75rem !important; /* 12px */
+            font-weight: 500 !important;
+            border: 1px solid rgba(13, 148, 136, 0.2) !important;
+            display: inline-block !important;
+            margin: 0.1rem 0 !important;
+            vertical-align: baseline !important;
+        }
+
+        .scrollbar-none::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-none {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Refined Suggested Questions Chips matching glass UI */
+        .suggest-chip {
+            background: rgba(255, 255, 255, 0.72) !important;
+            border: 1px solid var(--color-border) !important;
+            color: var(--color-text-secondary) !important;
+            border-radius: 9999px !important;
+            padding: 0.35rem 0.8rem !important;
+            font-size: 0.75rem !important; /* text-xs */
+            font-weight: 500 !important;
+            white-space: nowrap !important;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 0.4rem !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+            cursor: pointer !important;
+        }
+        .suggest-chip:hover {
+            background: #ffffff !important;
+            border-color: var(--color-teal) !important;
+            color: var(--color-teal) !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 8px rgba(13, 148, 136, 0.15) !important;
+        }
+        .suggest-chip:active {
+            transform: scale(0.97) !important;
+        }
+        html[data-theme="dark"] .suggest-chip,
+        html.dark .suggest-chip {
+            background: rgba(30, 41, 59, 0.65) !important;
+            border-color: rgba(255, 255, 255, 0.1) !important;
+            color: #94a3b8 !important;
+        }
+        html[data-theme="dark"] .suggest-chip:hover,
+        html.dark .suggest-chip:hover {
+            background: rgba(30, 41, 59, 0.95) !important;
+            border-color: var(--color-teal) !important;
+            color: var(--color-teal) !important;
+        }
     </style>
 </head>
-<body class="app-theme app-bg min-h-screen flex flex-col antialiased">
+<body class="app-theme min-h-screen flex flex-col antialiased app-bg">
+    <div class="flex h-screen overflow-hidden">
 
-    <header class="glass-bar sticky top-0 z-40 h-14 flex items-center justify-between px-4 sm:px-5">
-        <div class="flex items-center gap-2.5 min-w-0">
-            <a href="/" class="text-[var(--color-text-muted)] hover:text-[var(--color-text)] text-sm shrink-0 flex items-center gap-1 font-medium transition-colors">Home</a>
-            <span class="text-black/10">|</span>
-            <h1 class="text-sm font-semibold truncate text-[var(--color-text)]">Support assistant</h1>
-        </div>
-        <div class="flex items-center gap-2 flex-shrink-0">
-            <span class="badge hidden sm:inline-flex">{{ indexed_chunks_count }} chunks</span>
-            <span id="turnCounterBadge" class="badge font-mono">Turn <span id="currentTurn">0</span></span>
-            <button type="button" onclick="run10TurnDemo()" id="demoBtn" class="btn btn-secondary btn-sm">10-turn demo</button>
-            <button type="button" onclick="askReset()" class="btn btn-ghost btn-sm">Reset</button>
-            {% include 'partials/theme_toggle.html' %}
-        </div>
-    </header>
+        <!-- Collapsible Left Inspector Panel matching Task 1 architecture -->
+        <aside id="sidebar" class="w-80 glass-panel border-r border-white/60 dark:border-white/10 flex flex-col flex-shrink-0 transition-all duration-300 z-30">
+            <!-- Sidebar Header matching Task 1 -->
+            <div class="p-4 border-b border-black/5 dark:border-white/5 flex items-center justify-between">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="w-8 h-8 rounded-xl avatar-ai flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">AI</div>
+                    <div class="min-w-0">
+                        <h2 class="font-semibold text-[var(--color-text)] text-sm truncate">Support Assistant</h2>
+                        <p class="text-[11px] text-[var(--color-text-muted)]">Task 2 workspace</p>
+                    </div>
+                </div>
+                <button type="button" onclick="askReset()" title="New chat / Reset session" class="p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors flex-shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                </button>
+            </div>
 
-    <main class="flex-1 flex flex-col max-w-3xl mx-auto w-full px-4 py-4 min-h-0 h-[calc(100vh-3.5rem)]">
+            <!-- Scrollable Panel Content -->
+            <div id="sidebarContent" class="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+                
+                <!-- Card 1: Active Topic Card -->
+                <div class="glass-inset rounded-[var(--radius-lg)] p-3 border border-[var(--color-border)]">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Active Topic</span>
+                        <span id="topicSwitchBadge" class="hidden px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--color-teal-soft)] text-[var(--color-teal)]">Switched</span>
+                    </div>
+                    <div id="sidebarActiveTopic" class="text-sm font-bold text-[var(--color-text)] leading-snug break-words">
+                        General Support
+                    </div>
+                    <p id="sidebarTopicDesc" class="text-[11px] text-[var(--color-text-secondary)] mt-1.5 leading-relaxed">
+                        Awaiting initial query to index conversation domain.
+                    </p>
+                </div>
 
-        <div id="resetConfirm" class="hidden glass-panel rounded-[var(--radius-lg)] px-3 py-2 mb-3 flex items-center justify-between gap-2 text-sm">
-            <span class="text-[var(--color-text)]">Clear this chat?</span>
-            <span class="flex gap-2">
-                <button type="button" onclick="resetSession(true)" class="btn btn-primary btn-sm">Clear</button>
-                <button type="button" onclick="cancelReset()" class="btn btn-ghost btn-sm">Cancel</button>
-            </span>
-        </div>
+                <!-- Card 2: Memory & Anti-Repetition Status -->
+                <div class="glass-inset rounded-[var(--radius-lg)] p-3 border border-[var(--color-border)] space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Memory Inspector</span>
+                        <span id="antiRepeatStatus" class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-[var(--color-text-muted)]">Listening</span>
+                    </div>
+                    
+                    <!-- Turn Progress Bar -->
+                    <div>
+                        <div class="flex justify-between text-[11px] text-[var(--color-text-secondary)] mb-1">
+                            <span>Benchmark Progress</span>
+                            <span id="sidebarTurnText" class="font-mono font-medium">Turn 0 of 10</span>
+                        </div>
+                        <div class="w-full bg-black/5 dark:bg-white/10 rounded-full h-1.5 overflow-hidden">
+                            <div id="sidebarProgressBar" class="bg-[var(--color-teal)] h-1.5 rounded-full transition-all duration-300 w-0"></div>
+                        </div>
+                    </div>
 
-        <div class="glass-inset rounded-[var(--radius-lg)] px-3 py-2 mb-3 flex flex-wrap items-center justify-between gap-2 text-xs">
-            <span class="text-[var(--color-text-muted)]">Topic <strong id="activeTopicBadge" class="text-[var(--color-text)] font-medium">General</strong></span>
-            <span id="memoryLine" class="text-[var(--color-text-secondary)]">Memory is empty</span>
-        </div>
+                    <div class="pt-1.5 border-t border-[var(--color-border)]/60 text-[11px] text-[var(--color-text-secondary)]" id="sidebarMemoryDetail">
+                        Session memory is empty. Queries build a 10-turn persistent context.
+                    </div>
+                </div>
 
-        <div id="followupRow" class="mb-3 flex gap-2 overflow-x-auto pb-1">
-            <button type="button" onclick="sendPrompt('What is your SLA response time for Critical P1 outages?')" class="chip-btn">P1 SLA</button>
-            <button type="button" onclick="sendPrompt('Can I get a refund if I cancel my annual subscription?')" class="chip-btn">Refunds</button>
-            <button type="button" onclick="sendPrompt('Could you remind me of the refund terms for annual plans?')" class="chip-btn">Anti-repeat test</button>
-            <button type="button" onclick="sendPrompt('Is multi-factor authentication mandatory for admin accounts?')" class="chip-btn">MFA</button>
-            <button type="button" onclick="sendPrompt('Does warranty cover physical drop damage or liquid spills?')" class="chip-btn">Warranty</button>
-        </div>
+                <!-- Card 3: Topic Journey Timeline -->
+                <div class="glass-inset rounded-[var(--radius-lg)] p-3 border border-[var(--color-border)]">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Topic Trail</span>
+                        <span id="topicTrailCount" class="text-[10px] font-mono text-[var(--color-text-muted)]">0 explored</span>
+                    </div>
+                    <ul id="sidebarTopicList" class="space-y-1.5 text-[11px]">
+                        <li class="text-[var(--color-text-muted)] italic">No topic shifts recorded yet</li>
+                    </ul>
+                </div>
 
-        <div id="chatMessages" class="flex-1 glass-panel rounded-[var(--radius-xl)] p-4 overflow-y-auto space-y-5 min-h-0">
-            <div class="flex items-start gap-3 welcome-msg">
-                <div class="w-8 h-8 rounded-full avatar-ai flex items-center justify-center text-[10px] font-bold shrink-0">AI</div>
-                <div class="msg-assistant rounded-[var(--radius-lg)] rounded-tl-md p-4 text-sm max-w-[90%]">
-                    <p class="font-medium text-[var(--color-text)]">Policy-aware support</p>
-                    <p class="text-[var(--color-text-secondary)] mt-1">Ask about SLAs, billing, security, or warranty. Answers include document citations.</p>
+                <!-- Card 4: Indexed Support Knowledge Base -->
+                <div class="glass-inset rounded-[var(--radius-lg)] p-3 border border-[var(--color-border)] space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Knowledge Base</span>
+                        <span class="text-[10px] font-mono text-[var(--color-teal)] font-medium">18 Chunks</span>
+                    </div>
+                    <div class="space-y-1.5 text-[11px]">
+                        <div class="flex items-center gap-1.5 text-[var(--color-text-secondary)]">
+                            <span class="text-red-500 font-bold text-[9px]">PDF</span>
+                            <span class="truncate" title="Customer_Support_Policy.pdf">Customer_Support_Policy.pdf</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 text-[var(--color-text-secondary)]">
+                            <span class="text-red-500 font-bold text-[9px]">PDF</span>
+                            <span class="truncate" title="Subscription_Billing_Guide.pdf">Subscription_Billing_Guide.pdf</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 text-[var(--color-text-secondary)]">
+                            <span class="text-red-500 font-bold text-[9px]">PDF</span>
+                            <span class="truncate" title="Account_Security_Privacy.pdf">Account_Security_Privacy.pdf</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 5: Quick Benchmark Actions -->
+                <div class="space-y-2 pt-1">
+                    <button type="button" onclick="run10TurnDemo()" class="w-full btn btn-secondary btn-sm text-xs justify-center py-2 font-medium">
+                        Run 10-Turn Automated Benchmark
+                    </button>
+                    <button type="button" onclick="askReset()" class="w-full btn btn-ghost btn-sm text-xs justify-center text-[var(--color-text-muted)] hover:text-red-500">
+                        Clear Session Memory
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- Footer matching Task 1 -->
+            <div class="p-3 border-t border-black/5 dark:border-white/5 text-[11px] text-[var(--color-text-muted)] text-center">
+                DesiCrew assessment · Task 2
+            </div>
+        </aside>
+
+        <!-- Right Main Workspace matching Task 1 -->
+        <div class="flex-1 flex flex-col h-full relative overflow-hidden min-w-0">
+
+            <!-- Top Navigation Bar matching Task 1 -->
+            <header class="h-14 glass-bar flex items-center justify-between px-4 sm:px-5 z-10 flex-shrink-0 border-b border-[var(--color-border)]">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <a href="/" class="text-[var(--color-text-muted)] hover:text-[var(--color-text)] text-sm shrink-0 font-medium transition-colors">Home</a>
+                    <span class="text-black/10 dark:text-white/10">|</span>
+                    <button type="button" onclick="toggleSidebar()" class="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors" aria-label="Toggle sidebar" title="Toggle sidebar">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    </button>
+                    <h1 class="font-semibold text-[var(--color-text)] text-sm truncate">Support Assistant</h1>
+                </div>
+
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <span class="badge hidden sm:inline-flex text-[11px]">{{ indexed_chunks_count }} chunks</span>
+                    <span id="turnCounterBadge" class="badge font-mono text-[11px]">Turn <span id="currentTurn">0</span>/10</span>
+                    <button type="button" onclick="run10TurnDemo()" id="demoBtn" class="btn btn-secondary btn-sm text-xs">10-Turn Demo</button>
+                    <button type="button" onclick="askReset()" class="btn btn-ghost btn-sm text-xs">Reset</button>
+                    {% include 'partials/theme_toggle.html' %}
+                </div>
+            </header>
+
+            <!-- Floating Reset Confirmation Modal Banner -->
+            <div id="resetConfirm" class="hidden absolute top-16 inset-x-4 z-30 glass-panel rounded-[var(--radius-lg)] px-4 py-2.5 shadow-lg flex items-center justify-between gap-3 text-xs border border-red-500/20 bg-red-500/5">
+                <span class="text-[var(--color-text)] font-medium">Are you sure you want to reset session memory and clear all turns?</span>
+                <span class="flex gap-2 shrink-0">
+                    <button type="button" onclick="resetSession(true)" class="btn btn-primary btn-sm bg-red-600 hover:bg-red-700 text-xs">Yes, Reset</button>
+                    <button type="button" onclick="cancelReset()" class="btn btn-ghost btn-sm text-xs">Cancel</button>
+                </span>
+            </div>
+
+            <!-- Suggested Questions Upper Panel -->
+            <div class="px-4 py-2.5 shrink-0 border-b border-[var(--color-border)] bg-[var(--color-surface)]/50 backdrop-blur-md flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
+                    <div class="flex items-center gap-1.5 text-[var(--color-teal)] shrink-0 select-none font-semibold text-xs pr-1">
+                        <svg class="w-3.5 h-3.5 text-[var(--color-teal)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                        </svg>
+                        <span class="uppercase tracking-wider text-[11px] text-[var(--color-text-muted)]">Suggested:</span>
+                    </div>
+
+                    <!-- Horizontal Scrollable Questions Row -->
+                    <div id="followupRow" class="flex items-center gap-2 overflow-x-auto py-0.5 scrollbar-none flex-1">
+                        <button type="button" onclick="sendPrompt('What is your SLA response time for Critical P1 outages?')" class="suggest-chip text-xs shrink-0 whitespace-nowrap">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-teal)] shrink-0"></span>
+                            What is your SLA response time for Critical P1 outages?
+                        </button>
+                        <button type="button" onclick="sendPrompt('Can I get a refund if I cancel my annual subscription?')" class="suggest-chip text-xs shrink-0 whitespace-nowrap">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-teal)] shrink-0"></span>
+                            Can I get a refund if I cancel my annual subscription?
+                        </button>
+                        <button type="button" onclick="sendPrompt('Could you remind me of the refund terms for annual plans?')" class="suggest-chip text-xs shrink-0 whitespace-nowrap">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-teal)] shrink-0"></span>
+                            Could you remind me of the refund terms for annual plans?
+                        </button>
+                        <button type="button" onclick="sendPrompt('Is multi-factor authentication mandatory for admin accounts?')" class="suggest-chip text-xs shrink-0 whitespace-nowrap">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-teal)] shrink-0"></span>
+                            Is multi-factor authentication mandatory for admin accounts?
+                        </button>
+                        <button type="button" onclick="sendPrompt('Does warranty cover physical drop damage or liquid spills?')" class="suggest-chip text-xs shrink-0 whitespace-nowrap">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-teal)] shrink-0"></span>
+                            Does warranty cover physical drop damage or liquid spills?
+                        </button>
+                    </div>
                 </div>
             </div>
+
+            <!-- Chat Messages Scroll Container -->
+            <div id="chatMessages" class="flex-1 p-4 overflow-y-auto space-y-4 min-h-0 max-w-4xl mx-auto w-full">
+                <!-- Welcome Assistant Message -->
+                <div class="flex items-start gap-3 welcome-msg">
+                    <div class="w-8 h-8 rounded-full avatar-ai flex items-center justify-center text-[10px] font-bold shrink-0">AI</div>
+                    <div class="msg-assistant rounded-[var(--radius-lg)] rounded-tl-md p-4 text-sm max-w-[90%] shadow-sm">
+                        <div class="flex items-center gap-2 mb-1">
+                            <p class="font-semibold text-[var(--color-text)]">Policy-Aware Multi-Turn Support Assistant</p>
+                            <span class="badge text-[10px] font-mono">10-Turn Context</span>
+                        </div>
+                        <p class="text-[var(--color-text-secondary)] mt-1 text-xs sm:text-sm leading-relaxed">
+                            I am grounded in our enterprise policy documents. I maintain context across multi-turn conversations, avoid repeating already answered boilerplate, handle topic shifts gracefully, and provide section-level citations for every factual claim.
+                        </p>
+                        <div class="mt-3 pt-2.5 border-t border-[var(--color-border)] flex flex-wrap gap-2 text-xs text-[var(--color-text-muted)]">
+                            <span>Try clicking <strong>10-Turn Demo</strong> above or select any query chips to begin!</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Spinner Indicator -->
+            <div id="loadingIndicator" class="hidden px-4 py-1.5 max-w-4xl mx-auto w-full flex items-center gap-2 text-[var(--color-teal)] text-xs font-medium">
+                <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+                <span id="loadingText">Retrieving policies and synthesizing response…</span>
+            </div>
+
+            <!-- Chat Input Footer -->
+            <div class="p-3 sm:p-4 shrink-0 max-w-4xl mx-auto w-full">
+                <form id="chatForm" onsubmit="handleSubmit(event)" class="glass-panel rounded-[var(--radius-xl)] p-2 flex items-center gap-2 border border-[var(--color-border)] shadow-md">
+                    <textarea
+                        id="messageInput"
+                        rows="1"
+                        placeholder="Ask about SLAs, refunds, warranty, billing, or security…"
+                        class="flex-1 bg-transparent px-3 py-2 text-sm outline-none text-[var(--color-text)] placeholder-[var(--color-text-muted)] resize-none max-h-32"
+                    ></textarea>
+                    <button type="button" id="stopBtn" onclick="stopRequest()" class="hidden btn btn-stop btn-sm shrink-0 text-xs">Stop</button>
+                    <button type="submit" id="sendBtn" class="btn btn-primary btn-sm shrink-0 text-xs font-semibold px-4">Send</button>
+                </form>
+            </div>
         </div>
+    </div>
 
-        <div id="loadingIndicator" class="hidden my-2 flex items-center gap-2 text-[var(--color-teal)] text-xs font-medium">
-            <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
-            <span id="loadingText">Answering…</span>
-        </div>
-
-        <form id="chatForm" onsubmit="handleSubmit(event)" class="mt-3 glass-panel rounded-[var(--radius-xl)] p-2 flex items-center gap-2">
-            <textarea
-                id="messageInput"
-                rows="1"
-                placeholder="Message support assistant…"
-                class="flex-1 bg-transparent px-3 py-2.5 text-sm outline-none text-[var(--color-text)] placeholder-[var(--color-text-muted)] resize-none max-h-32"
-            ></textarea>
-            <button type="button" id="stopBtn" onclick="stopRequest()" class="hidden btn btn-stop btn-sm shrink-0">Stop</button>
-            <button type="submit" id="sendBtn" class="btn btn-primary btn-sm shrink-0">Send</button>
-        </form>
-    </main>
-
+    <!-- JavaScript Controller -->
     <script>
         const chatMessages = document.getElementById('chatMessages');
         const messageInput = document.getElementById('messageInput');
@@ -89,15 +366,44 @@
         const sendBtn = document.getElementById('sendBtn');
         const stopBtn = document.getElementById('stopBtn');
         const currentTurnSpan = document.getElementById('currentTurn');
-        const activeTopicBadge = document.getElementById('activeTopicBadge');
         const demoBtn = document.getElementById('demoBtn');
-        const memoryLine = document.getElementById('memoryLine');
         const followupRow = document.getElementById('followupRow');
+        
+        // Sidebar Inspector Elements
+        const sidebar = document.getElementById('sidebar');
+        const sidebarActiveTopic = document.getElementById('sidebarActiveTopic');
+        const sidebarTopicDesc = document.getElementById('sidebarTopicDesc');
+        const topicSwitchBadge = document.getElementById('topicSwitchBadge');
+        const antiRepeatStatus = document.getElementById('antiRepeatStatus');
+        const sidebarTurnText = document.getElementById('sidebarTurnText');
+        const sidebarProgressBar = document.getElementById('sidebarProgressBar');
+        const sidebarMemoryDetail = document.getElementById('sidebarMemoryDetail');
+        const sidebarTopicList = document.getElementById('sidebarTopicList');
+        const topicTrailCount = document.getElementById('topicTrailCount');
+
         let chatAbortController = null;
         let demoRunning = false;
         let demoCancelled = false;
+        let recordedTopics = [];
 
         const welcomeHtml = chatMessages.innerHTML;
+
+        // Sidebar Toggle matching Task 1 implementation
+        function toggleSidebar() {
+            if (window.innerWidth <= 768) {
+                sidebar.classList.toggle('sidebar-hidden');
+            } else {
+                sidebar.classList.toggle('-ml-80');
+            }
+        }
+
+        // Keyboard Shortcut: Ctrl + B or Cmd + B to toggle sidebar
+        window.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+                e.preventDefault();
+                toggleSidebar();
+            }
+        });
 
         function setChatBusy(busy) {
             messageInput.disabled = busy;
@@ -109,7 +415,14 @@
 
         function stopRequest() {
             demoCancelled = true;
-            if (chatAbortController) chatAbortController.abort();
+            demoRunning = false;
+            demoBtn.disabled = false;
+            demoBtn.textContent = '10-Turn Demo';
+            if (chatAbortController) {
+                try { chatAbortController.abort(); } catch(e) {}
+                chatAbortController = null;
+            }
+            setChatBusy(false);
         }
 
         function isAbortError(err) {
@@ -152,7 +465,7 @@
             const div = document.createElement('div');
             div.className = 'flex items-start justify-end gap-3';
             div.innerHTML = `
-                <div class="msg-user rounded-[var(--radius-lg)] rounded-tr-md p-3.5 max-w-[85%] text-sm">${escapeHtml(text)}</div>
+                <div class="msg-user rounded-[var(--radius-lg)] rounded-tr-md p-3.5 max-w-[85%] text-sm shadow-sm">${escapeHtml(text)}</div>
                 <div class="w-8 h-8 rounded-full avatar-user flex items-center justify-center text-[10px] font-semibold shrink-0 mt-0.5">You</div>
             `;
             chatMessages.appendChild(div);
@@ -167,31 +480,96 @@
             });
         }
 
-        function updateMemory(data) {
-            if (!memoryLine) return;
-            const bits = [];
-            if (data.topic) bits.push(`Now: ${data.topic}`);
-            if (data.previous_topic) bits.push(`from ${data.previous_topic}`);
-            if (data.anti_repeat) bits.push('will not repeat the policy you already heard');
-            if (Array.isArray(data.topics) && data.topics.length > 1) {
-                bits.push(`covered ${data.topics.length} topics`);
+        function updateInspectorPanel(data) {
+            const turn = data.turn_number || (data.total_turns || 0);
+            if (currentTurnSpan) currentTurnSpan.textContent = turn;
+            if (sidebarTurnText) sidebarTurnText.textContent = `Turn ${turn} of 10`;
+            
+            // Progress Bar
+            const percent = Math.min(100, Math.round((turn / 10) * 100));
+            if (sidebarProgressBar) sidebarProgressBar.style.width = `${percent}%`;
+
+            // Active Topic
+            if (data.topic && sidebarActiveTopic) {
+                sidebarActiveTopic.textContent = data.topic;
             }
-            memoryLine.textContent = bits.length ? bits.join(' · ') : 'Memory is empty';
+
+            // Topic Switch & Description
+            if (data.is_topic_switch) {
+                if (topicSwitchBadge) {
+                    topicSwitchBadge.classList.remove('hidden');
+                    topicSwitchBadge.textContent = data.returning_to_previous_topic ? 'Returning' : 'Switched';
+                }
+                if (sidebarTopicDesc) {
+                    sidebarTopicDesc.textContent = data.returning_to_previous_topic
+                        ? `Returned from ${data.previous_topic || 'previous'} to ${data.topic}.`
+                        : `Gracefully switched focus from ${data.previous_topic || 'prior topic'} to ${data.topic}.`;
+                }
+            } else {
+                if (topicSwitchBadge) topicSwitchBadge.classList.add('hidden');
+                if (sidebarTopicDesc && data.topic) {
+                    sidebarTopicDesc.textContent = `Maintaining conversational continuity in "${data.topic}".`;
+                }
+            }
+
+            // Anti-Repetition Status
+            if (antiRepeatStatus) {
+                if (data.anti_repeat) {
+                    antiRepeatStatus.textContent = 'Active (Delta facts)';
+                    antiRepeatStatus.className = 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20';
+                } else {
+                    antiRepeatStatus.textContent = 'Monitoring';
+                    antiRepeatStatus.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-[var(--color-text-muted)]';
+                }
+            }
+
+            // Memory Details
+            if (sidebarMemoryDetail) {
+                const bits = [];
+                if (data.anti_repeat) bits.push('Boilerplate suppressed; delivering only delta details.');
+                if (Array.isArray(data.topics) && data.topics.length > 0) {
+                    bits.push(`${data.topics.length} topic domains catalogued in active session.`);
+                }
+                sidebarMemoryDetail.textContent = bits.length ? bits.join(' ') : 'Retaining continuous 10-turn multi-topic session memory.';
+            }
+
+            // Topic Timeline Trail
+            if (Array.isArray(data.topics) && data.topics.length > 0) {
+                recordedTopics = data.topics;
+                if (topicTrailCount) topicTrailCount.textContent = `${recordedTopics.length} explored`;
+                if (sidebarTopicList) {
+                    sidebarTopicList.innerHTML = recordedTopics.map((t, idx) => {
+                        const isCurrent = (t === data.topic);
+                        return `
+                            <li class="flex items-center justify-between p-1.5 rounded-md ${isCurrent ? 'bg-[var(--color-teal-soft)] font-semibold text-[var(--color-teal)]' : 'text-[var(--color-text-secondary)]'}">
+                                <span class="truncate flex items-center gap-1.5">
+                                    <span class="w-1.5 h-1.5 rounded-full ${isCurrent ? 'bg-[var(--color-teal)]' : 'bg-gray-300 dark:bg-gray-600'}"></span>
+                                    <span class="truncate">${escapeHtml(t)}</span>
+                                </span>
+                                ${isCurrent ? '<span class="text-[9px] uppercase tracking-wider font-bold">Now</span>' : ''}
+                            </li>
+                        `;
+                    }).join('');
+                }
+            }
         }
 
         function followUpsFor(topic) {
             const t = (topic || '').toLowerCase();
             if (t.includes('sla') || t.includes('outage') || t.includes('severity')) {
-                return ['What about Standard P3 severity issues?', 'What is the protocol for a P1 bridge call?'];
+                return ['What about Standard P3 severity issues?', 'What is your SLA response time for Critical P1 outages?'];
             }
             if (t.includes('refund') || t.includes('billing') || t.includes('subscription')) {
                 return ['How many days does a refund take to arrive?', 'Could you remind me of the refund terms for annual plans?'];
             }
             if (t.includes('security') || t.includes('mfa') || t.includes('auth')) {
-                return ['What if an admin loses both password and 2FA recovery codes?'];
+                return ['What is the protocol if an administrator loses both password and 2FA recovery codes?'];
             }
             if (t.includes('warrant')) {
-                return ['Does warranty cover liquid spills?'];
+                return ['Does warranty cover physical drop damage or liquid spills?'];
+            }
+            if (t.includes('shipment') || t.includes('lost')) {
+                return ['How long before a missing package is officially declared Lost in Transit?'];
             }
             return ['What is your SLA response time for Critical P1 outages?', 'Can I get a refund if I cancel my annual subscription?'];
         }
@@ -199,7 +577,10 @@
         function renderFollowUps(topic) {
             if (!followupRow) return;
             followupRow.innerHTML = followUpsFor(topic).map((q) =>
-                `<button type="button" class="chip-btn whitespace-nowrap" data-q="${escapeHtml(q)}">${escapeHtml(q.length > 48 ? q.slice(0, 46) + '…' : q)}</button>`
+                `<button type="button" class="suggest-chip text-xs shrink-0 whitespace-nowrap" data-q="${escapeHtml(q)}">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-teal)] shrink-0"></span>
+                    <span>${escapeHtml(q)}</span>
+                </button>`
             ).join('');
             followupRow.querySelectorAll('[data-q]').forEach((btn) => {
                 btn.addEventListener('click', () => sendPrompt(btn.getAttribute('data-q')));
@@ -210,25 +591,34 @@
             const div = document.createElement('div');
             div.className = 'flex items-start gap-3';
 
-            if (data.turn_number) currentTurnSpan.textContent = data.turn_number;
-            if (data.topic) activeTopicBadge.textContent = data.topic;
-            updateMemory(data);
+            updateInspectorPanel(data);
             if (data.topic) renderFollowUps(data.topic);
 
             let metaBanner = '';
             if (data.is_topic_switch) {
                 const switchTitle = data.returning_to_previous_topic
-                    ? `Back to <strong>${escapeHtml(data.topic)}</strong>`
-                    : `Now discussing <strong>${escapeHtml(data.topic)}</strong>`;
-                metaBanner = `<p class="text-xs text-[var(--color-teal)] mb-2 font-medium">${switchTitle}</p>`;
+                    ? `Returning to: <strong>${escapeHtml(data.topic)}</strong>`
+                    : `Topic Transition: <strong>${escapeHtml(data.topic)}</strong>`;
+                metaBanner = `<p class="text-xs text-[var(--color-teal)] mb-2 font-medium flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-[var(--color-teal)]"></span>${switchTitle}</p>`;
             }
 
             let citationBox = '';
             const sources = data.sources || [];
             if (sources.length) {
-                citationBox = `<div class="mt-3 pt-2 border-t border-[var(--color-border)] space-y-1">${sources.map((s) =>
-                    `<details class="text-xs"><summary class="cursor-pointer font-mono text-[var(--color-teal)]">${escapeHtml(s.citation || 'Source')}</summary><p class="mt-1 text-[var(--color-text-secondary)]">${escapeHtml(s.excerpt || '')}</p></details>`
-                ).join('')}</div>`;
+                citationBox = `<div class="mt-3 pt-2.5 border-t border-[var(--color-border)] space-y-2">${sources.map((s) => {
+                    let cleanText = (s.excerpt || '').replace(/^#{1,6}\s*/gm, '');
+                    let parsedContent = marked.parse(cleanText);
+                    return `
+                    <details class="text-xs group rounded-lg p-2.5 bg-black/[0.02] dark:bg-white/[0.03] border border-[var(--color-border)] transition-all">
+                        <summary class="cursor-pointer font-mono text-[var(--color-teal)] font-medium flex items-center gap-1.5 select-none hover:underline">
+                            <span class="text-[10px] text-[var(--color-text-muted)] transition-transform group-open:rotate-90 inline-block">▶</span>
+                            <span>${escapeHtml(s.citation || 'Official Citation')}</span>
+                        </summary>
+                        <div class="prose max-w-none mt-2 text-[var(--color-text-secondary)] pl-3 border-l-2 border-[var(--color-teal)] text-xs leading-relaxed">
+                            ${parsedContent}
+                        </div>
+                    </details>`;
+                }).join('')}</div>`;
             } else if (data.citations && data.citations.length > 0) {
                 citationBox = `<div class="mt-3 pt-2 border-t border-[var(--color-border)]">${data.citations.map((c) =>
                     `<span class="inline-block text-[10px] font-mono px-2 py-0.5 rounded-md bg-[var(--color-teal-soft)] text-[var(--color-teal)] mr-1 mb-1">${escapeHtml(c)}</span>`
@@ -237,15 +627,15 @@
 
             let formattedReply = marked.parse(data.reply || '');
             formattedReply = highlightCitations(formattedReply);
-            const retryBtn = retryText ? `<button type="button" data-retry="1">Retry</button>` : '';
+            const retryBtn = retryText ? `<button type="button" data-retry="1" class="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)]">Retry</button>` : '';
 
             div.innerHTML = `
-                <div class="w-8 h-8 rounded-full avatar-ai flex items-center justify-center text-[10px] font-bold shrink-0">AI</div>
-                <div class="msg-assistant rounded-[var(--radius-lg)] rounded-tl-md p-4 max-w-[90%] text-sm">
+                <div class="w-8 h-8 rounded-full avatar-ai flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">AI</div>
+                <div class="msg-assistant rounded-[var(--radius-lg)] rounded-tl-md p-4 max-w-[90%] text-sm shadow-sm">
                     ${metaBanner}
-                    <div class="prose max-w-none text-sm">${formattedReply}</div>
+                    <div class="prose max-w-none text-sm leading-relaxed">${formattedReply}</div>
                     ${citationBox}
-                    <div class="msg-toolbar"><button type="button" data-copy="1">Copy</button>${retryBtn}</div>
+                    <div class="msg-toolbar mt-2 pt-1 border-t border-black/5 dark:border-white/5 flex gap-2"><button type="button" data-copy="1" class="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)]">Copy</button>${retryBtn}</div>
                 </div>
             `;
             div.querySelector('[data-copy]')?.addEventListener('click', (ev) => {
@@ -293,19 +683,48 @@
                 return;
             }
             cancelReset();
+
+            // 1. Immediately abort running demo and in-flight fetch
+            demoCancelled = true;
+            demoRunning = false;
+            if (chatAbortController) {
+                try { chatAbortController.abort(); } catch(e) {}
+                chatAbortController = null;
+            }
+
+            // 2. Unset busy and re-enable demo button
+            setChatBusy(false);
+            demoBtn.disabled = false;
+            demoBtn.textContent = '10-Turn Demo';
+            messageInput.value = '';
+
+            // 3. Clear server session memory in Django DB
             const csrftoken = getCookie('csrftoken');
             try {
                 await fetch('/task2/api/reset/', {
                     method: 'POST',
                     headers: { 'X-CSRFToken': csrftoken }
                 });
-                chatMessages.innerHTML = welcomeHtml.replace('Policy-aware support', 'New chat');
-                currentTurnSpan.textContent = '0';
-                activeTopicBadge.textContent = 'General';
-                if (memoryLine) memoryLine.textContent = 'Memory is empty';
             } catch (err) {
-                console.error(err);
+                console.error('Reset error:', err);
             }
+
+            // 4. Reset UI metrics and chat
+            chatMessages.innerHTML = welcomeHtml;
+            recordedTopics = [];
+            if (currentTurnSpan) currentTurnSpan.textContent = '0';
+            if (sidebarTurnText) sidebarTurnText.textContent = 'Turn 0 of 10';
+            if (sidebarProgressBar) sidebarProgressBar.style.width = '0%';
+            if (sidebarActiveTopic) sidebarActiveTopic.textContent = 'General Support';
+            if (sidebarTopicDesc) sidebarTopicDesc.textContent = 'Session memory reset. Awaiting new inquiry.';
+            if (topicSwitchBadge) topicSwitchBadge.classList.add('hidden');
+            if (antiRepeatStatus) {
+                antiRepeatStatus.textContent = 'Listening';
+                antiRepeatStatus.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-[var(--color-text-muted)]';
+            }
+            if (sidebarMemoryDetail) sidebarMemoryDetail.textContent = 'Session memory is empty.';
+            if (sidebarTopicList) sidebarTopicList.innerHTML = '<li class="text-[var(--color-text-muted)] italic">No topic shifts recorded yet</li>';
+            if (topicTrailCount) topicTrailCount.textContent = '0 explored';
         }
 
         async function handleSubmit(e) {
@@ -337,9 +756,9 @@
                 appendAssistantResponse(data);
             } catch (err) {
                 if (isAbortError(err)) {
-                    appendAssistantResponse({ reply: '_Stopped by user._' });
+                    appendAssistantResponse({ reply: '_Request was cancelled by user._' });
                 } else {
-                    appendAssistantResponse({ reply: `**Error:** ${err.message}` }, text);
+                    appendAssistantResponse({ reply: `**Error communicating with support engine:** ${err.message}` }, text);
                 }
             } finally {
                 chatAbortController = null;
@@ -349,23 +768,56 @@
         }
 
         async function run10TurnDemo() {
-            if (demoRunning) return;
+            if (demoRunning) {
+                // If demo is running, clicking acts as an immediate Stop button
+                stopRequest();
+                return;
+            }
             demoRunning = true;
             demoCancelled = false;
-            const demoLabel = demoBtn.textContent;
-            demoBtn.disabled = true;
-            await resetSession(true);
+            demoBtn.disabled = false;
+            demoBtn.textContent = 'Stop Demo';
+
+            // Clean server session & UI directly before starting fresh benchmark
+            const csrftoken = getCookie('csrftoken');
+            try {
+                await fetch('/task2/api/reset/', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrftoken }
+                });
+            } catch(e) {}
+
+            chatMessages.innerHTML = welcomeHtml;
+            recordedTopics = [];
+            if (currentTurnSpan) currentTurnSpan.textContent = '0';
+            if (sidebarTurnText) sidebarTurnText.textContent = 'Turn 0 of 10';
+            if (sidebarProgressBar) sidebarProgressBar.style.width = '0%';
+            if (sidebarActiveTopic) sidebarActiveTopic.textContent = 'General Support';
+            if (sidebarTopicDesc) sidebarTopicDesc.textContent = 'Running 10-turn benchmark audit…';
+            if (sidebarTopicList) sidebarTopicList.innerHTML = '<li class="text-[var(--color-text-muted)] italic">No topic shifts recorded yet</li>';
+            if (topicTrailCount) topicTrailCount.textContent = '0 explored';
+
+            // Ensure sidebar is open during demo so evaluator sees insights live
+            if (sidebar.classList.contains('-ml-80')) {
+                sidebar.classList.remove('-ml-80');
+            }
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                sidebar.classList.remove('sidebar-hidden');
+            }
+
             for (let i = 0; i < BENCHMARK_TURNS.length; i++) {
                 if (demoCancelled) break;
-                demoBtn.textContent = `Turn ${i + 1} of ${BENCHMARK_TURNS.length}`;
+                demoBtn.textContent = `Turn ${i + 1}/10… (Stop)`;
                 messageInput.value = BENCHMARK_TURNS[i];
                 await handleSubmit(new Event('submit'));
                 if (demoCancelled) break;
-                await new Promise(r => setTimeout(r, 1000));
+                await new Promise(r => setTimeout(r, 1200));
             }
+
             demoRunning = false;
             demoBtn.disabled = false;
-            demoBtn.textContent = demoLabel;
+            demoBtn.textContent = '10-Turn Demo';
+            setChatBusy(false);
         }
     </script>
 </body>

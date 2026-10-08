@@ -126,36 +126,37 @@ Using internal policy documents as a knowledge base, build a document-aware supp
 
 #### A. Document Indexing & PyMuPDF RAG
 - Documents are parsed using **PyMuPDF (`pymupdf`)** to preserve layout, heading hierarchies, page boundaries, and section numbers.
-- Semantic chunks are tagged with rich metadata: `{ "document": "Terms_and_Conditions.pdf", "page": 4, "section": "Section 2.1: Grace Periods" }`.
-- Dense vector retrieval fetches top-$k$ relevant chunks for contextual answering.
+- Semantic chunks are tagged with rich metadata: `{ "source_file": "Customer_Support_Policy.pdf", "page_number": 2, "section_title": "Service Level Agreements (SLAs) & Response Windows", "citation": "[Doc: Customer_Support_Policy.pdf, Page: 2, Section: Service Level Agreements (SLAs) & Response Windows]" }`.
+- Dense vector retrieval fetches top-$k$ relevant chunks from persistent ChromaDB for contextual answering.
 
 #### B. 10-Turn Session Memory & Anti-Repetition Guard
 - Django database-backed session state persists:
   1. Complete conversation turn history (user inputs and assistant replies).
   2. Extracted entities and referenced policy topics.
   3. Memory embeddings of prior assistant responses.
-- **Anti-Repetition Mechanism:** Before streaming a response, the system measures semantic cosine similarity against previously issued explanations. If overlap exceeds 0.85, the model is prompted:
+- **Anti-Repetition Mechanism:** Before streaming a response, the system measures semantic cosine similarity against previously issued explanations using normalized token-frequency vector dot products. If overlap exceeds 0.85 (or if facts were delivered previously in the active session), the model is instructed:
   > *"The user previously received information regarding [Topic]. Do NOT repeat the boilerplate terms. Reference prior agreement concisely and answer the new follow-up directly."*
 
 #### C. Topic Switching Engine
 - The classifier tracks intent domain transitions. When the user jumps from *Hardware Warranty* to *Subscription Billing*, the assistant explicitly signals the transition:
-  > *"Switching to Subscription Billing terms..."*
-- When the user returns to an earlier subject, the assistant leverages previous context without starting from zero.
+  > *"Switching gears to discuss our subscription plans..."*
+- When the user returns to an earlier subject, the assistant leverages previous context without starting from zero:
+  > *"Returning to our earlier discussion regarding [Topic]..."*
 
 ### 3. Complete 10-Turn Benchmark Conversation Trace
 
 | Turn | User Query | Detected Topic | Handled Behavior | Specific Document Citation |
 | :---: | :--- | :--- | :--- | :--- |
-| **T1** | *"What is your SLA response time for Critical P1 outages?"* | SLA & Incident Response | Baseline Policy Retrieval | `[Doc: SLA_Master_Guide.pdf, Page: 3, Section: P1 Severity Matrix]` |
-| **T2** | *"What about Standard P3 severity issues?"* | SLA & Incident Response | Intra-topic follow-up; retains P1 context for comparison | `[Doc: SLA_Master_Guide.pdf, Page: 4, Section: P3 Standard Response]` |
-| **T3** | *"Can I get a refund if I cancel my annual subscription?"* | Refund Policy | **Topic Switch 1:** Transitions from SLA to Billing | `[Doc: Master_Billing_Terms.pdf, Page: 7, Section: 4.2 Refund Eligibility]` |
-| **T4** | *"How many days does it take for the refund money to reach my account?"* | Refund Policy | Follow-up on refund disbursement timelines | `[Doc: Master_Billing_Terms.pdf, Page: 8, Section: 4.4 Payment Reversal]` |
-| **T5** | *"Could you remind me of the refund terms for annual plans?"* | Refund Policy | **Anti-Repetition Triggered:** Avoids repeating full text from Turn 3; provides concise summary | `[Doc: Master_Billing_Terms.pdf, Page: 7, Section: 4.2 Refund Eligibility]` |
-| **T6** | *"Is multi-factor authentication mandatory for admin accounts?"* | Security & 2FA | **Topic Switch 2:** Shifts from Billing to Access Security | `[Doc: Enterprise_Security_Policy.pdf, Page: 11, Section: 8.1 MFA Policy]` |
-| **T7** | *"What is the protocol if an administrator loses both password and 2FA recovery codes?"* | Security & 2FA | Security incident recovery follow-up | `[Doc: Enterprise_Security_Policy.pdf, Page: 13, Section: 8.5 Emergency Account Recovery]` |
-| **T8** | *"What features and pricing are included in the Professional Plan?"* | Subscription Tiers | **Topic Switch 3:** Shifts from Security to Pricing | `[Doc: Service_Tier_Schedule.pdf, Page: 2, Section: Tier Comparison Table]` |
-| **T9** | *"Does warranty cover physical drop damage or liquid spills?"* | Hardware Warranty | **Topic Switch 4:** Shifts to Hardware Support | `[Doc: Hardware_Warranty_Policy.pdf, Page: 5, Section: Exclusions & Liquid Damage]` |
-| **T10**| *"How long before a missing package is officially declared Lost in Transit?"* | Logistics Support | Final follow-up on shipping claims | `[Doc: Hardware_Warranty_Policy.pdf, Page: 9, Section: Shipping & Transit Loss]` |
+| **T1** | *"What is your SLA response time for Critical P1 outages?"* | Service Level Agreements (SLAs) & Response Windows | Baseline Policy Retrieval | `[Doc: Customer_Support_Policy.pdf, Page: 2, Section: Service Level Agreements (SLAs) & Response Windows]` |
+| **T2** | *"What about Standard P3 severity issues?"* | Service Level Agreements (SLAs) & Response Windows | Intra-topic follow-up; retains P1 context for comparison | `[Doc: Customer_Support_Policy.pdf, Page: 2, Section: Service Level Agreements (SLAs) & Response Windows]` |
+| **T3** | *"Can I get a refund if I cancel my annual subscription?"* | Refund & Cancellation Terms | **Topic Switch 1:** Transitions from SLA to Billing | `[Doc: Customer_Support_Policy.pdf, Page: 3, Section: Refund & Cancellation Terms]` |
+| **T4** | *"How many days does it take for the refund money to reach my account?"* | Refund & Cancellation Terms | Follow-up on refund disbursement timelines | `[Doc: Customer_Support_Policy.pdf, Page: 3, Section: Refund & Cancellation Terms]` |
+| **T5** | *"Could you remind me of the refund terms for annual plans?"* | Refund & Cancellation Terms | **Anti-Repetition Triggered:** Avoids repeating full text from Turn 3; provides concise summary | `[Doc: Customer_Support_Policy.pdf, Page: 3, Section: Refund & Cancellation Terms]` |
+| **T6** | *"Is multi-factor authentication mandatory for admin accounts?"* | Multi-Factor Authentication (MFA / 2FA) Requirements | **Topic Switch 2:** Shifts from Billing to Access Security | `[Doc: Account_Security_Privacy.pdf, Page: 2, Section: Multi-Factor Authentication (MFA / 2FA) Requirements]` |
+| **T7** | *"What is the protocol if an administrator loses both password and 2FA recovery codes?"* | Password Reset Protocols & Identity Verification | **Topic Switch 3:** Shifts to Account Recovery & Verification Protocols | `[Doc: Account_Security_Privacy.pdf, Page: 3, Section: Password Reset Protocols & Identity Verification]` |
+| **T8** | *"What features and pricing are included in the Professional Plan?"* | Subscription Tiers & Pricing Model | **Topic Switch 4:** Shifts to Pricing & Subscription Tiers | `[Doc: Subscription_Billing_Guide.pdf, Page: 2, Section: Subscription Tiers & Pricing Model]` |
+| **T9** | *"Does warranty cover physical drop damage or liquid spills?"* | Warranty Coverage & Hardware Replacements | **Topic Switch 5:** Shifts to Hardware Warranty Policy | `[Doc: Customer_Support_Policy.pdf, Page: 4, Section: Warranty Coverage & Hardware Replacements]` |
+| **T10**| *"How long before a missing package is officially declared Lost in Transit?"* | Damaged or Lost Shipments Protocols | **Topic Switch 6:** Shifts to Shipping & Logistics Protocols | `[Doc: Customer_Support_Policy.pdf, Page: 5, Section: Damaged or Lost Shipments Protocols]` |
 
 ---
 

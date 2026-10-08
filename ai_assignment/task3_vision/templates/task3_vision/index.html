@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document scan · Task 3</title>
+    <title>Document Scan</title>
     {% include 'partials/tailwind_setup.html' %}
     <script src="https://cdn.tailwindcss.com"></script>
     {% include 'partials/app_theme.html' %}
@@ -69,7 +69,10 @@
         <div class="flex items-center gap-2.5 min-w-0">
             <a href="/" class="text-[var(--color-text-muted)] hover:text-[var(--color-text)] text-sm shrink-0 font-medium transition-colors">Home</a>
             <span class="text-black/10 dark:text-white/10">|</span>
-            <h1 class="text-sm font-semibold truncate text-[var(--color-text)]">Document extraction (Task 3)</h1>
+            <div class="min-w-0">
+                <h1 class="text-sm font-semibold truncate text-[var(--color-text)] leading-tight">Document Scan</h1>
+                <p class="text-[11px] text-[var(--color-text-muted)] leading-tight">Task 3 workspace</p>
+            </div>
         </div>
         <div class="flex items-center gap-3 shrink-0">
             <span class="text-xs font-medium text-[var(--color-text-secondary)]" title="{{ threshold_rationale }}">
