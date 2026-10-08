@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DocAware Support Assistant · Task 2</title>
+    {% include 'partials/favicon.html' %}
     {% include 'partials/tailwind_setup.html' %}
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -354,6 +355,35 @@
             <!-- BOTTOM FLOATING COMPOSER INPUT                                            -->
             <!-- ========================================================================= -->
             <div class="p-3 sm:p-4 shrink-0 max-w-3xl mx-auto w-full z-20">
+                <!-- Document Context Status Bar (Active Document & Covered Documents) -->
+                <div id="docStatusBar" class="mb-2 space-y-1.5 transition-all">
+                    <!-- Active Document Banner -->
+                    <div id="activeDocBanner" class="hidden items-center justify-between px-3 py-1.5 rounded-xl bg-teal-500/10 border border-teal-500/25 text-xs shadow-sm">
+                        <div class="flex items-center gap-2 truncate min-w-0">
+                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-teal-500 text-white shrink-0">
+                                <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                                Active
+                            </span>
+                            <span class="text-[var(--color-text-muted)] text-[11px] shrink-0">Focus:</span>
+                            <span id="activeDocName" class="font-semibold text-[var(--color-teal)] font-mono text-[11px] truncate">filename.pdf</span>
+                        </div>
+                        <button type="button" onclick="clearActiveDoc()" title="Switch to broad knowledge base search" class="text-[var(--color-text-muted)] hover:text-red-500 p-0.5 rounded cursor-pointer transition-colors" aria-label="Clear active document focus">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Covered Documents in this Chat -->
+                    <div id="coveredDocsRow" class="hidden items-center gap-1.5 text-[11px] px-1 overflow-x-auto py-0.5">
+                        <span class="text-[10px] font-medium text-[var(--color-text-muted)] shrink-0 flex items-center gap-1">
+                            <svg class="w-3 h-3 text-[var(--color-teal)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            Covered in chat:
+                        </span>
+                        <div id="coveredDocsBadges" class="flex items-center gap-1 flex-wrap">
+                            <!-- Dynamically populated covered document pills -->
+                        </div>
+                    </div>
+                </div>
+
                 <form id="chatForm" onsubmit="handleChatSubmit(event)" class="glass-panel rounded-2xl sm:rounded-3xl p-1.5 sm:p-2 flex items-end gap-2 border border-[var(--color-border)] shadow-lg focus-within:border-[var(--color-teal)] transition-colors">
                     
                     <!-- Document Attachment Button -->
@@ -603,6 +633,79 @@
             currentChatTitle.textContent = chat.title || 'New chat';
             renderMessages();
             renderChatsList();
+            renderDocStatusBar();
+        }
+
+        function renderDocStatusBar() {
+            const chat = getActiveChat();
+            const banner = document.getElementById('activeDocBanner');
+            const nameEl = document.getElementById('activeDocName');
+            const coveredRow = document.getElementById('coveredDocsRow');
+            const coveredBadges = document.getElementById('coveredDocsBadges');
+
+            if (!banner || !nameEl) return;
+
+            // 1. Render Active Document Banner
+            if (chat && chat.activeDocument) {
+                nameEl.textContent = chat.activeDocument;
+                banner.classList.remove('hidden');
+                banner.classList.add('flex');
+            } else {
+                banner.classList.remove('flex');
+                banner.classList.add('hidden');
+            }
+
+            // 2. Render Covered Documents Row
+            const covered = (chat && chat.coveredDocuments && chat.coveredDocuments.length > 0)
+                ? chat.coveredDocuments
+                : (chat && chat.activeDocument ? [chat.activeDocument] : []);
+
+            if (coveredBadges && coveredRow) {
+                if (covered.length > 0) {
+                    coveredBadges.innerHTML = '';
+                    covered.forEach(docName => {
+                        const isDocActive = chat && chat.activeDocument === docName;
+                        const badge = document.createElement('button');
+                        badge.type = 'button';
+                        badge.onclick = () => setActiveDoc(docName);
+                        badge.className = `px-2 py-0.5 rounded-lg text-[10px] font-mono cursor-pointer transition-all border ${
+                            isDocActive
+                                ? 'bg-teal-500/20 text-[var(--color-teal)] border-teal-500/40 font-bold shadow-xs'
+                                : 'bg-black/5 dark:bg-white/5 text-[var(--color-text-secondary)] hover:text-[var(--color-text)] border-[var(--color-border)] hover:bg-black/10 dark:hover:bg-white/10'
+                        }`;
+                        badge.title = isDocActive ? `Currently active: ${docName}` : `Click to switch active focus to ${docName}`;
+                        badge.innerHTML = `<span>${escapeHtml(docName)}</span>${isDocActive ? ' <span class="text-teal-500 font-bold">●</span>' : ''}`;
+                        coveredBadges.appendChild(badge);
+                    });
+                    coveredRow.classList.remove('hidden');
+                    coveredRow.classList.add('flex');
+                } else {
+                    coveredRow.classList.remove('flex');
+                    coveredRow.classList.add('hidden');
+                }
+            }
+        }
+
+        function setActiveDoc(filename) {
+            const chat = getActiveChat();
+            if (chat) {
+                chat.activeDocument = filename;
+                if (!chat.coveredDocuments) chat.coveredDocuments = [];
+                if (!chat.coveredDocuments.includes(filename)) {
+                    chat.coveredDocuments.push(filename);
+                }
+                saveChatsToStorage();
+                renderDocStatusBar();
+            }
+        }
+
+        function clearActiveDoc() {
+            const chat = getActiveChat();
+            if (chat) {
+                delete chat.activeDocument;
+                saveChatsToStorage();
+                renderDocStatusBar();
+            }
         }
 
         function deleteChat(chatId, event) {
@@ -783,7 +886,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         message: query,
-                        chat_id: activeChatId
+                        chat_id: activeChatId,
+                        active_document: (chat && chat.activeDocument) ? chat.activeDocument : null
                     }),
                     signal: abortController.signal
                 });
@@ -794,6 +898,15 @@
 
                 const data = await response.json();
                 
+                // Synchronize Active Document and Covered Documents from backend
+                if (data.active_document) {
+                    chat.activeDocument = data.active_document;
+                }
+                if (data.covered_documents && Array.isArray(data.covered_documents)) {
+                    chat.coveredDocuments = data.covered_documents;
+                }
+                renderDocStatusBar();
+
                 const asstMsg = {
                     id: 'msg_' + Date.now(),
                     role: 'assistant',
@@ -998,6 +1111,9 @@
 
             const formData = new FormData();
             formData.append('file', file);
+            if (activeChatId) {
+                formData.append('chat_id', activeChatId);
+            }
 
             try {
                 const res = await fetch('/task2/api/upload/', {
@@ -1013,9 +1129,40 @@
                 showUploadToast(`✓ Indexed ${data.chunks_added || 1} chunks from "${data.filename}"!`, false);
                 hideUploadToast(3500);
 
-                // Add announcement message into current conversation
+                // Add to modal uploads list if not already present
+                const modalList = document.getElementById('modalUploadsList');
+                if (modalList) {
+                    const existing = modalList.querySelector(`[data-file="${CSS.escape(data.filename)}"]`);
+                    if (!existing) {
+                        const emptyNotice = modalList.querySelector('p');
+                        if (emptyNotice) emptyNotice.remove();
+
+                        const ext = data.filename.split('.').pop().toUpperCase();
+                        const row = document.createElement('div');
+                        row.className = 'flex items-center justify-between p-2 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-[var(--color-border)] group';
+                        row.setAttribute('data-file', data.filename);
+                        row.innerHTML = `
+                            <div class="flex items-center gap-2 truncate min-w-0">
+                                <span class="px-1.5 py-0.5 rounded font-mono font-bold text-[9px] bg-teal-500/10 text-[var(--color-teal)] shrink-0">${escapeHtml(ext)}</span>
+                                <span class="font-medium text-[var(--color-text)] truncate">${escapeHtml(data.filename)}</span>
+                            </div>
+                            <button type="button" onclick="deleteUploadedDocument('${escapeHtml(data.filename)}', this)" title="Remove ${escapeHtml(data.filename)}" class="text-[var(--color-text-muted)] hover:text-red-500 p-1 rounded transition-colors shrink-0 cursor-pointer" aria-label="Delete ${escapeHtml(data.filename)}">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </button>
+                        `;
+                        modalList.prepend(row);
+                    }
+                }
+
+                // Add announcement message into current conversation and set activeDocument
                 const chat = getActiveChat();
                 if (chat) {
+                    chat.activeDocument = data.filename;
+                    if (!chat.coveredDocuments) chat.coveredDocuments = [];
+                    if (!chat.coveredDocuments.includes(data.filename)) {
+                        chat.coveredDocuments.push(data.filename);
+                    }
+                    renderDocStatusBar();
                     const noticeMsg = {
                         id: 'msg_' + Date.now(),
                         role: 'assistant',
@@ -1048,6 +1195,10 @@
                 if (data.success) {
                     const row = btnEl.closest('[data-file]');
                     if (row) row.remove();
+                    const chat = getActiveChat();
+                    if (chat && chat.activeDocument === filename) {
+                        clearActiveDoc();
+                    }
                 } else {
                     alert(data.error || 'Failed to remove document.');
                 }

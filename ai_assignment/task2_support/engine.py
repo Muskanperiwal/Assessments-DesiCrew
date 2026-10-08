@@ -155,12 +155,97 @@ class SupportRAGEngine:
 
         return chunks
 
+    def _segment_page_text_into_chunks(self, raw_text: str, filename: str, page_num: int) -> List[DocumentChunk]:
+        """Intelligently splits page text into semantic section-level chunks."""
+        chunks: List[DocumentChunk] = []
+        file_stem = Path(filename).stem.replace('_', ' ')
+        clean_text = raw_text.replace('\u200b', '')
+        lines = [l.strip() for l in clean_text.splitlines() if l.strip()]
+        if not lines:
+            return chunks
+
+        def is_heading(line: str) -> bool:
+            clean = line.strip()
+            if len(clean) > 60:
+                return False
+            if clean.isupper() and len(clean) >= 3 and not re.search(r'^\d', clean):
+                return True
+            if re.match(r'^(summary|education|skills|technical skills|experience|work experience|projects|certifications|awards|overview|terms|policies|guidelines|contact|profile|about|features|pricing|security|refund|warranty)\b', clean.lower()):
+                return True
+            if clean.startswith(('##', '#')) or re.match(r'^\d+\.\s+[A-Z]', clean):
+                return True
+            if '|' in clean and any(term in clean.lower() for term in ['python', 'react', 'flask', 'sqlite', 'java', 'c++', 'aws', 'docker']):
+                return True
+            return False
+
+        sections = []
+        current_title = f"{file_stem} - Page {page_num}"
+        current_lines = []
+
+        for line in lines:
+            if is_heading(line) and current_lines:
+                sections.append((current_title, '\n'.join(current_lines)))
+                current_title = line.strip().lstrip('#').strip()
+                current_lines = [line]
+            else:
+                if is_heading(line) and not current_lines:
+                    current_title = line.strip().lstrip('#').strip()
+                current_lines.append(line)
+
+        if current_lines:
+            sections.append((current_title, '\n'.join(current_lines)))
+
+        c_idx = 1
+        for title, content in sections:
+            # If section is moderate (<= 900 chars), keep as a single coherent chunk
+            if len(content) <= 900:
+                chunk_id = f"custom_{Path(filename).stem}_p{page_num}_c{c_idx}"
+                chunks.append(DocumentChunk(
+                    chunk_id=chunk_id,
+                    text=content,
+                    source_file=filename,
+                    page_number=page_num,
+                    section_title=title
+                ))
+                c_idx += 1
+            else:
+                # Sub-chunk by bullet points or paragraphs
+                bullets = [b.strip() for b in re.split(r'(?=\n[•\-\*]|\n\d+\.)', content) if b.strip()]
+                sub_parts = []
+                cur_part = []
+                cur_len = 0
+                for b in (bullets if len(bullets) > 1 else content.split('\n\n')):
+                    b_strip = b.strip()
+                    if not b_strip:
+                        continue
+                    if cur_len + len(b_strip) > 750 and cur_part:
+                        sub_parts.append('\n'.join(cur_part))
+                        cur_part = [b_strip]
+                        cur_len = len(b_strip)
+                    else:
+                        cur_part.append(b_strip)
+                        cur_len += len(b_strip)
+                if cur_part:
+                    sub_parts.append('\n'.join(cur_part))
+
+                for sub in sub_parts:
+                    chunk_id = f"custom_{Path(filename).stem}_p{page_num}_c{c_idx}"
+                    chunks.append(DocumentChunk(
+                        chunk_id=chunk_id,
+                        text=sub,
+                        source_file=filename,
+                        page_number=page_num,
+                        section_title=title
+                    ))
+                    c_idx += 1
+
+        return chunks
+
     def _parse_pdf_from_bytes(self, file_bytes: bytes, filename: str) -> List[DocumentChunk]:
         """Parse PDF bytes into chunks (used for uploads folder sync)."""
         chunks: List[DocumentChunk] = []
         if pymupdf is None:
             return chunks
-        file_stem = Path(filename).stem.replace('_', ' ')
         try:
             doc = pymupdf.open(stream=file_bytes, filetype="pdf")
             for page_idx in range(len(doc)):
@@ -168,19 +253,7 @@ class SupportRAGEngine:
                 raw_text = (doc[page_idx].get_text() or "").strip()
                 if not raw_text:
                     continue
-                section_title = self._extract_section_title(raw_text, fallback=f"{file_stem} - Page {page_num}")
-                paragraphs = [p.strip() for p in raw_text.split('\n\n') if len(p.strip()) > 30]
-                if not paragraphs:
-                    paragraphs = [raw_text]
-                for p_idx, para in enumerate(paragraphs, 1):
-                    chunk_id = f"custom_{Path(filename).stem}_p{page_num}_c{p_idx}"
-                    chunks.append(DocumentChunk(
-                        chunk_id=chunk_id,
-                        text=para,
-                        source_file=filename,
-                        page_number=page_num,
-                        section_title=section_title,
-                    ))
+                chunks.extend(self._segment_page_text_into_chunks(raw_text, filename, page_num))
             doc.close()
         except Exception as e:
             logger.error(f"Error parsing PDF bytes for {filename}: {e}")
@@ -495,6 +568,17 @@ class SupportRAGEngine:
             stem = Path(name).stem.lower().replace("_", " ")
             if name.lower() in q or stem in q:
                 return name
+            clean_parts = [p for p in re.split(r'[\s_\-]+', Path(name).stem.lower()) if len(p) >= 3 and p not in ('pdf', 'doc', 'docx')]
+            if 'pan' in clean_parts and re.search(r'\bpan(\s*card)?\b', q):
+                return name
+            if 'iit' in clean_parts and re.search(r'\biit\b', q):
+                return name
+            if 'billing' in clean_parts and re.search(r'\bbilling(\s*guide)?\b', q):
+                return name
+            if 'support' in clean_parts and re.search(r'\bsupport(\s*policy)?\b', q):
+                return name
+            if 'security' in clean_parts and re.search(r'\bsecurity(\s*policy|\s*privacy)?\b', q):
+                return name
         return None
 
     def query_requests_compare(self, query: str) -> bool:
@@ -532,6 +616,12 @@ class SupportRAGEngine:
         """Keep retrieval within one source file to avoid mixed-document answers."""
         if not chunks or self.query_requests_compare(query):
             return chunks[:top_k]
+
+        if source_file_lock:
+            same_file = [c for c in chunks if c.get("source_file") == source_file_lock]
+            if same_file:
+                same_file.sort(key=lambda c: self._chunk_score(query, c), reverse=True)
+                return same_file[:top_k]
 
         explicit = self.detect_filename_in_query(query)
         entity_src = self._resolve_entity_source_file(query, chunks)
@@ -612,10 +702,20 @@ class SupportRAGEngine:
 
         if self._collection and self._collection.count() > 0:
             try:
-                chroma_res = self._collection.query(
-                    query_texts=[clean_query],
-                    n_results=min(fetch_n, self._collection.count()),
-                )
+                query_kwargs = {
+                    "query_texts": [clean_query],
+                    "n_results": min(fetch_n, self._collection.count()),
+                }
+                if source_file_lock:
+                    query_kwargs["where"] = {"source_file": source_file_lock}
+                chroma_res = self._collection.query(**query_kwargs)
+
+                # If query with filter returned no results, grab chunks from that document
+                if (not chroma_res or not chroma_res.get('documents') or not chroma_res['documents'][0]) and source_file_lock:
+                    raw_res = self._collection.get(where={"source_file": source_file_lock}, limit=top_k)
+                    if raw_res and raw_res.get('documents'):
+                        chroma_res = {'documents': [raw_res['documents']], 'metadatas': [raw_res['metadatas']]}
+
                 if chroma_res and chroma_res.get('documents') and chroma_res['documents'][0]:
                     for d, m in zip(chroma_res['documents'][0], chroma_res['metadatas'][0]):
                         add_candidate({
@@ -631,20 +731,22 @@ class SupportRAGEngine:
             except Exception as e:
                 logger.warning(f"ChromaDB retrieval failed: {e}. Falling back to lexical retrieval.")
 
-        for chunk in self._lexical_fallback_search(clean_query, top_k=fetch_n):
+        for chunk in self._lexical_fallback_search(clean_query, top_k=fetch_n, source_file_lock=source_file_lock):
             add_candidate(chunk)
 
         if candidate_pool:
             ranked = self._rerank_chunks(clean_query, candidate_pool, max(top_k * 3, 12))
             return self._focus_to_primary_document(clean_query, ranked, top_k, source_file_lock)
 
-        fallback = self._lexical_fallback_search(clean_query, top_k=max(top_k * 3, 12))
+        fallback = self._lexical_fallback_search(clean_query, top_k=max(top_k * 3, 12), source_file_lock=source_file_lock)
         return self._focus_to_primary_document(clean_query, fallback, top_k, source_file_lock)
 
-    def _lexical_fallback_search(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
+    def _lexical_fallback_search(self, query: str, top_k: int = 3, source_file_lock: Optional[str] = None) -> List[Dict[str, Any]]:
         """High-precision keyword matching fallback if vector store is unavailable."""
         if not self._in_memory_chunks:
             self._load_fallback_chunks()
+
+        pool = [c for c in self._in_memory_chunks if c.source_file == source_file_lock] if source_file_lock else self._in_memory_chunks
 
         tokens = re.findall(r'[a-zA-Z0-9_\-]+', query.lower())
         q_words = [w for w in tokens if w not in STOP_WORDS and len(w) > 2]
@@ -652,7 +754,7 @@ class SupportRAGEngine:
             q_words = [w for w in tokens if len(w) > 2]
 
         scored: List[tuple] = []
-        for chunk in self._in_memory_chunks:
+        for chunk in pool:
             score = 0
             text_lower = chunk.text.lower()
             title_lower = chunk.section_title.lower()
@@ -669,8 +771,8 @@ class SupportRAGEngine:
         scored.sort(key=lambda x: x[0], reverse=True)
         chosen = [item[1] for item in scored[:top_k]]
 
-        if not chosen and self._in_memory_chunks:
-            chosen = self._in_memory_chunks[:top_k]
+        if not chosen and pool:
+            chosen = pool[:top_k]
 
         return [
             {
@@ -803,20 +905,8 @@ class SupportRAGEngine:
                     if not raw_text.strip():
                         continue
 
-                    section_title = self._extract_section_title(raw_text, fallback=f"{file_stem} - Page {page_num}")
-                    paragraphs = [p.strip() for p in raw_text.split('\n\n') if len(p.strip()) > 30]
-                    if not paragraphs:
-                        paragraphs = [raw_text.strip()]
-
-                    for p_idx, para in enumerate(paragraphs, 1):
-                        chunk_id = f"custom_{Path(safe_name).stem}_p{page_num}_c{p_idx}"
-                        chunks.append(DocumentChunk(
-                            chunk_id=chunk_id,
-                            text=para,
-                            source_file=safe_name,
-                            page_number=page_num,
-                            section_title=section_title
-                        ))
+                    page_chunks = self._segment_page_text_into_chunks(raw_text, safe_name, page_num)
+                    chunks.extend(page_chunks)
                 doc.close()
             except Exception as pdf_err:
                 logger.error(f"Error parsing custom PDF {filename}: {pdf_err}")
@@ -846,16 +936,8 @@ class SupportRAGEngine:
             if not paragraphs:
                 return {"success": False, "error": "No readable text found in Word document."}
 
-            section_title = self._extract_section_title("\n".join(paragraphs[:3]), fallback=f"{file_stem} Overview")
-            for p_idx, para in enumerate(paragraphs, 1):
-                chunk_id = f"custom_{Path(safe_name).stem}_p1_c{p_idx}"
-                chunks.append(DocumentChunk(
-                    chunk_id=chunk_id,
-                    text=para,
-                    source_file=safe_name,
-                    page_number=1,
-                    section_title=section_title
-                ))
+            doc_text = "\n\n".join(paragraphs)
+            chunks.extend(self._segment_page_text_into_chunks(doc_text, safe_name, 1))
 
         elif ext in ('.txt', '.md'):
             pages_count = 1
@@ -864,20 +946,7 @@ class SupportRAGEngine:
             except Exception as text_err:
                 return {"success": False, "error": f"Failed to decode text: {text_err}"}
 
-            section_title = self._extract_section_title(raw_text[:500], fallback=f"{file_stem} Document")
-            paragraphs = [p.strip() for p in raw_text.split('\n\n') if len(p.strip()) > 20]
-            if not paragraphs:
-                paragraphs = [line.strip() for line in raw_text.split('\n') if len(line.strip()) > 20]
-
-            for p_idx, para in enumerate(paragraphs, 1):
-                chunk_id = f"custom_{Path(safe_name).stem}_p1_c{p_idx}"
-                chunks.append(DocumentChunk(
-                    chunk_id=chunk_id,
-                    text=para,
-                    source_file=safe_name,
-                    page_number=1,
-                    section_title=section_title
-                ))
+            chunks.extend(self._segment_page_text_into_chunks(raw_text, safe_name, 1))
 
         elif ext in ('.png', '.jpg', '.jpeg', '.webp'):
             pages_count = 1
@@ -885,20 +954,7 @@ class SupportRAGEngine:
             if not raw_text.strip():
                 raw_text = f"Document: {file_stem}. Scanned image document."
 
-            section_title = self._extract_section_title(raw_text, fallback=f"{file_stem} Overview")
-            paragraphs = [p.strip() for p in raw_text.split('\n\n') if len(p.strip()) > 30]
-            if not paragraphs:
-                paragraphs = [raw_text.strip()]
-
-            for p_idx, para in enumerate(paragraphs, 1):
-                chunk_id = f"custom_{Path(safe_name).stem}_p1_c{p_idx}"
-                chunks.append(DocumentChunk(
-                    chunk_id=chunk_id,
-                    text=para,
-                    source_file=safe_name,
-                    page_number=1,
-                    section_title=section_title
-                ))
+            chunks.extend(self._segment_page_text_into_chunks(raw_text, safe_name, 1))
 
         if not chunks:
             return {

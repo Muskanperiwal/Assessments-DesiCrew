@@ -102,5 +102,29 @@
       "Date": "26/04/26",
       "Place": "West Bihar"
     }
+  },
+  "Assignment Ashok.pdf": {
+    "document_type": "Assignment Request Form",
+    "is_handwritten": true,
+    "fields": {
+      "Policy Number": "1500137601025",
+      "Policyholder Name": "Ashok",
+      "Assignee Name": "HDFC BANK",
+      "Reason for Assignment": "LOAN PROTECTION",
+      "Date": "26/04/2026",
+      "Place": "West Bihar"
+    }
+  },
+  "Proposal Ashok.pdf": {
+    "document_type": "Proposal Form",
+    "is_handwritten": true,
+    "fields": {
+      "Application Number": "1500137601025",
+      "Name of Life Assured": "Ashok",
+      "Insurance Plan Name": "HDFC Life Sanjay Par Advantage",
+      "Premium Amount": "50000",
+      "Date": "26/04/2026",
+      "Place": "West Bihar"
+    }
   }
 }

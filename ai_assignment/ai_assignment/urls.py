@@ -26,7 +26,27 @@ def home_view(request):
     }
     return render(request, 'home.html', context)
 
+from django.http import FileResponse, HttpResponse
+
+def favicon_ico_view(request):
+    icon_path = settings.BASE_DIR / 'static' / 'favicon.ico'
+    if icon_path.exists():
+        response = FileResponse(open(icon_path, 'rb'), content_type='image/x-icon')
+        response['Cache-Control'] = 'public, max-age=86400'
+        return response
+    return HttpResponse(status=204)
+
+def favicon_svg_view(request):
+    svg_path = settings.BASE_DIR / 'static' / 'favicon.svg'
+    if svg_path.exists():
+        response = FileResponse(open(svg_path, 'rb'), content_type='image/svg+xml')
+        response['Cache-Control'] = 'public, max-age=86400'
+        return response
+    return HttpResponse(status=404)
+
 urlpatterns = [
+    path('favicon.ico', favicon_ico_view, name='favicon_ico'),
+    path('favicon.svg', favicon_svg_view, name='favicon_svg'),
     path('admin/', admin.site.urls),
     path('', home_view, name='home'),
     path('task1/', include('task1_agent.urls')),

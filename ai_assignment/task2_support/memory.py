@@ -51,6 +51,8 @@ class SessionMemory:
         self.topic_history: List[str] = data.get("topic_history", [])
         self.active_topic: Optional[str] = data.get("active_topic", None)
         self.topic_switches: List[Dict[str, Any]] = data.get("topic_switches", [])
+        self.active_document: Optional[str] = data.get("active_document", None)
+        self.covered_documents: List[str] = data.get("covered_documents", [])
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -59,6 +61,8 @@ class SessionMemory:
             "topic_history": self.topic_history,
             "active_topic": self.active_topic,
             "topic_switches": self.topic_switches,
+            "active_document": self.active_document,
+            "covered_documents": self.covered_documents,
         }
 
     @property
@@ -153,6 +157,11 @@ class SessionMemory:
                 new_facts.append(fact)
 
         resolved_source = source_file or self.parse_source_file(citation)
+        if resolved_source:
+            self.active_document = resolved_source
+            if resolved_source not in self.covered_documents:
+                self.covered_documents.append(resolved_source)
+
         turn_record = {
             "turn_number": turn_num,
             "user_query": user_query,
@@ -201,45 +210,43 @@ class SessionMemory:
         return seen
 
     def is_likely_follow_up(self, user_message: str) -> bool:
-        """Heuristic: short or anaphoric messages depend on prior turns for retrieval."""
+        """Heuristic: only truly underspecified anaphoric queries depend on prior turns for retrieval."""
         msg = user_message.strip()
         if not msg:
             return False
         low = msg.lower()
-        if len(msg.split()) <= 14:
-            if re.search(
-                r'\b(it|that|this|those|they|them|same|also|second|third|first|previous|earlier|above|remind|again)\b',
-                low,
-            ):
+
+        # If query contains explicit domain nouns, it is a standalone query that retrieves on its own
+        standalone_indicators = (
+            'sla', 'outage', 'severity', 'p1', 'p2', 'p3', 'p4',
+            'refund', 'cancel', 'subscription', 'billing', 'invoice', 'plan', 'pricing', 'tier',
+            'mfa', '2fa', 'multi-factor', 'password', 'recovery', 'security', 'privacy',
+            'warranty', 'damage', 'liquid', 'drop', 'shipment', 'transit', 'package',
+            'pan', 'card', 'income tax', 'birth', 'holder', 'father', 'degree', 'resume'
+        )
+        if any(w in low for w in standalone_indicators):
+            if low.startswith(('what about', 'how about', 'and what about', 'and for')):
                 return True
-            if low.startswith(('what about', 'how about', 'and ', 'also ', 'tell me more')):
+            return False
+
+        # Short anaphoric phrases lacking self-contained context
+        if len(msg.split()) <= 6:
+            if re.search(r'\b(it|that|those|they|them|same|also|previous|earlier|remind|again)\b', low):
                 return True
-        if re.search(r'\b(p[1-4]|method|step|option)\b', low) and len(msg.split()) <= 12 and self.turns:
-            return True
-        if re.search(r'\bwhat about\b.*\b(plan|method|option)\b', low) and self.turns:
-            return True
+            if low.startswith(('what about', 'how about', 'and ', 'also ', 'tell me more', 'how long', 'why', 'what else')):
+                return True
         return False
 
     def build_retrieval_query(self, user_message: str) -> str:
-        """Expand underspecified follow-ups with session topic + prior user question."""
+        """Expand underspecified follow-ups cleanly without corrupting the search text."""
         parts = [user_message.strip()]
         if self.is_likely_follow_up(user_message) and self.turns:
-            if self.active_topic:
+            if len(user_message.strip().split()) <= 4 and self.active_topic:
                 parts.append(self.active_topic)
             last_q = self.get_last_user_query()
-            if last_q and last_q.lower() != user_message.strip().lower():
+            if last_q and len(user_message.strip().split()) <= 4 and last_q.lower() != user_message.strip().lower():
                 parts.append(last_q)
-            for topic in self.get_recent_topics(2):
-                parts.append(topic)
-        # De-duplicate while preserving order
-        deduped: List[str] = []
-        seen_lower = set()
-        for p in parts:
-            key = p.lower()
-            if p and key not in seen_lower:
-                deduped.append(p)
-                seen_lower.add(key)
-        return " ".join(deduped)
+        return " ".join(parts)
 
     def get_session_brief(self, max_turns: int = 6) -> str:
         """Compact narrative of recent dialogue for the LLM (topics + facts already covered)."""
@@ -278,6 +285,8 @@ class SessionMemory:
         self.topic_history = []
         self.active_topic = None
         self.topic_switches = []
+        self.active_document = None
+        self.covered_documents = []
 
 
 def get_session_memory(request, chat_id: Optional[str] = None) -> SessionMemory:

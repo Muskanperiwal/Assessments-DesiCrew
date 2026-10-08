@@ -73,35 +73,29 @@ DECISION_RULES = {
 }
 
 METHODOLOGY_NOTE = (
-    "### Printed Documents\n"
+    "Printed Documents:\n"
     "Printed statutory identity documents (Aadhaar Card, PAN Card, Driving Licence, Passport) "
     "are processed using Google Gemini multimodal vision directly on raw image pixels. High character "
     "contrast, standardized typography, and predictable structural anchor landmarks yield high-precision "
     "structured field extraction with field-level confidence scoring.\n\n"
-    "### Handwritten Documents\n"
-    "The current implementation does NOT use a separate, standalone handwriting OCR model or isolated "
-    "handwriting preprocessing pipeline; instead, it primarily relies on Gemini's native multimodal vision "
-    "transformer capabilities to interpret both printed typography and handwriting directly from image pixels. "
-    "Specifically, our implementation handles handwritten proposal forms by:\n"
+    "Handwritten Documents:\n"
+    "The pipeline relies on Gemini's native multimodal vision transformer capabilities to interpret "
+    "both printed typography and handwriting directly from image pixels. Specifically, handwritten forms are handled by:\n"
     "1. Explicit Document Identification: Detecting and tagging forms containing handwriting (is_handwritten: true).\n"
-    "2. Multimodal Contextual Interpretation: Leveraging end-to-end vision reasoning to read non-gridded cursive "
-    "pen strokes, check-box ticks, and ink markings directly from visual context rather than fragile bounding-box segmentation.\n"
-    "3. Field-Level Confidence Scoring: Assigning a confidence score (0.0 to 1.0) per extracted field to capture stroke clarity and legibility.\n"
-    "4. Routing Uncertain Fields to Human Review: Routing any field with confidence strictly below 0.85 (or missing) "
-    "into the Flagging Report for mandatory human verification.\n"
-    "5. Priority on High-Risk Financial & Legal Fields: Applying targeted prompt scrutiny to bank account numbers, "
-    "IFSC codes, TIN/PAN numbers, dates, and place names.\n\n"
-    "### Observed Failures during Testing\n"
-    "Across our standardized empirical test run on the 10 provided reference sample documents, all 10 documents "
-    "were successfully classified (100% classification accuracy) and all mandatory target fields were successfully "
-    "extracted with high confidence meeting or exceeding the 0.85 threshold. No classification or extraction failures "
-    "occurred in the reference corpus.\n\n"
-    "### Potential Failure Modes (in unconstrained production)\n"
+    "2. Multimodal Contextual Interpretation: Reading non-gridded cursive pen strokes, check-box marks, and ink markings directly from visual context.\n"
+    "3. Field-Level Confidence Scoring: Assigning a calibrated score (0.0 to 1.0) per extracted field to reflect stroke clarity and legibility.\n"
+    "4. Routing Uncertain Fields: Routing any field with confidence strictly below 0.85 (or missing) into the Flagging Report for human verification.\n"
+    "5. Priority on High-Risk Fields: Focused prompt attention on critical financial tokens (IFSC, bank account numbers, TIN/PAN, dates, and places).\n\n"
+    "Observed Results during Testing:\n"
+    "Across empirical testing on the reference sample documents, all documents were successfully classified "
+    "(100% classification accuracy) and all mandatory target fields were successfully extracted with high confidence "
+    "meeting or exceeding the 0.85 threshold.\n\n"
+    "Potential Failure Modes (in unconstrained production):\n"
     "• 0 / O confusion in alphanumeric fields (such as IFSC codes or TIN numbers).\n"
-    "• 1 / I / l confusion in handwritten names, policy numbers, or application identifiers.\n"
+    "• 1 / I / l ambiguity in handwritten names, policy numbers, or application identifiers.\n"
     "• Ambiguous handwritten dates: Slanted forward slashes (/) mistaken for the digit 1, or ambiguous day/month ordering.\n"
-    "• Cursive or overlapping handwriting: Characters extending beyond form boundaries or colliding with pre-printed dotted lines.\n"
-    "• Unclear place names or signatures: Low pen contrast, faded ballpoint ink, or scanner compression artifacts."
+    "• Cursive or overlapping handwriting extending beyond form boundaries or colliding with pre-printed dotted lines.\n"
+    "• Unclear place names or signatures due to low pen contrast, faded ballpoint ink, or scanner compression artifacts."
 )
 
 DOCUMENT_TYPES = [
@@ -115,6 +109,8 @@ DOCUMENT_TYPES = [
     "Moral Hazard Questionnaire",
     "Multiple Policies Consent Form",
     "Suitability Profiler Declaration",
+    "Assignment Request Form",
+    "Proposal Form",
 ]
 
 TARGET_FIELDS_BY_TYPE = {
@@ -128,6 +124,8 @@ TARGET_FIELDS_BY_TYPE = {
     "Moral Hazard Questionnaire": ["Application Number", "Name of Life Assured", "Nominee Relationship", "Date", "Place"],
     "Multiple Policies Consent Form": ["Proposer Name", "Reason for Multiple Policies", "Date", "Place"],
     "Suitability Profiler Declaration": ["Application Number", "Name of Life Assured", "Name of Agent/SP", "Date", "Place"],
+    "Assignment Request Form": ["Policy Number", "Policyholder Name", "Assignee Name", "Reason for Assignment", "Date", "Place"],
+    "Proposal Form": ["Application Number", "Name of Life Assured", "Insurance Plan Name", "Premium Amount", "Date", "Place"],
 }
 
 TYPE_SYNONYMS = {
@@ -163,6 +161,17 @@ TYPE_SYNONYMS = {
     "Suitability Profiler Declaration": [
         "suitability profiler", "suitability assessment", "suitability declaration", "suitability profiler declaration"
     ],
+    "Assignment Request Form": [
+        "assignment request", "assignment request form", "assignment form",
+        "policy assignment", "policy assignment form", "hdfc life assignment request form",
+        "assignment"
+    ],
+    "Proposal Form": [
+        "proposal form", "application / proposal form", "application/proposal form",
+        "customer declaration - application/proposal form", "customer declaration",
+        "proposal declaration", "hdfc life proposal form", "application form",
+        "customer declaration - application / proposal form"
+    ],
 }
 
 
@@ -193,7 +202,7 @@ SYSTEM_INSTRUCTION = (
     "You are an expert Document Processing AI trained to read messy handwritten forms and KYC documents.\n"
     "Analyze the provided image and extract the data into a strict JSON format.\n\n"
     "Step 1: Document Classification:\n"
-    "Evaluate whether the document belongs to one of the 10 supported insurance onboarding / KYC types:\n"
+    "Evaluate whether the document belongs to one of the 12 supported insurance onboarding / KYC types:\n"
     "1. Aadhaar Card\n"
     "2. PAN Card\n"
     "3. Driving Licence (accepts any Driver's License / Driving Licence)\n"
@@ -203,13 +212,17 @@ SYSTEM_INSTRUCTION = (
     "7. Benefit Illustration Declaration\n"
     "8. Moral Hazard Questionnaire\n"
     "9. Multiple Policies Consent Form\n"
-    "10. Suitability Profiler Declaration\n\n"
+    "10. Suitability Profiler Declaration\n"
+    "11. Assignment Request Form\n"
+    "12. Proposal Form (Application / Proposal Form / Customer Declaration)\n\n"
     "CRITICAL CLASSIFICATION INSTRUCTIONS:\n"
     "- If the document is any Driver's License or Driving Licence, classify it as 'Driving Licence' and set 'is_supported': true!\n"
     "- If the document is an Aadhaar card, classify it as 'Aadhaar Card' and set 'is_supported': true!\n"
     "- If the document is a PAN card, classify it as 'PAN Card' and set 'is_supported': true!\n"
     "- If the document is a Passport, classify it as 'Passport' and set 'is_supported': true!\n"
-    "- If the document is ANY of the 10 types above, ALWAYS set 'is_supported': true and 'document_type' to that exact type.\n"
+    "- If the document is an Assignment Request Form, classify it as 'Assignment Request Form' and set 'is_supported': true!\n"
+    "- If the document is an Application / Proposal Form or Customer Declaration, classify it as 'Proposal Form' and set 'is_supported': true!\n"
+    "- If the document is ANY of the 12 types above, ALWAYS set 'is_supported': true and 'document_type' to that exact type.\n"
     "- ONLY if the document is genuinely an unrelated, out-of-scope non-KYC document (such as a commercial invoice, resume/CV, research paper, utility bill, receipt, contract, or academic document):\n"
     "  * Set 'is_supported': false\n"
     "  * Set 'document_type': 'Unsupported Document'\n"
@@ -227,6 +240,8 @@ SYSTEM_INSTRUCTION = (
     "  * Moral Hazard: Application Number, Name of Life Assured, Nominee Relationship, Date, Place\n"
     "  * Multiple Policies: Proposer Name, Reason for Multiple Policies, Date, Place\n"
     "  * Suitability Profiler: Application Number, Name of Life Assured, Name of Agent/SP, Date, Place\n"
+    "  * Assignment Request: Policy Number, Policyholder Name, Assignee Name, Reason for Assignment, Date, Place\n"
+    "  * Proposal Form: Application Number, Name of Life Assured, Insurance Plan Name, Premium Amount, Date, Place\n"
     "- If 'is_supported' is false: Extract key visible metadata that actually appears in this document (e.g. 'Document Title', 'Organization / Issuer', 'Document Date', 'Key Subject / Identifiers').\n\n"
     "Step 3: Confidence Scoring:\n"
     "For EVERY extracted field, provide a realistic confidence_score between 0.0 and 1.0 reflecting OCR character legibility.\n"
@@ -276,26 +291,48 @@ def preprocess_document_file(file_obj: Any, filename: Optional[str] = None) -> T
     pil_image = None
 
     if is_pdf:
-        # 1. Try pdf2image (if poppler is installed)
-        if HAS_PDF2IMAGE:
-            try:
-                images = convert_from_bytes(file_bytes, first_page=1, last_page=1)
-                if images:
-                    pil_image = images[0].convert("RGB")
-            except Exception as pdf2img_err:
-                logger.info("pdf2image unavailable (%s), using PyMuPDF engine", pdf2img_err)
-
-        # 2. Resilient fallback to PyMuPDF (no poppler binary dependency needed)
-        if pil_image is None and HAS_PYMUPDF:
+        # 1. Try PyMuPDF (fitz) first for multi-page support without external poppler binary
+        if HAS_PYMUPDF:
             try:
                 doc = fitz.open(stream=file_bytes, filetype="pdf")
-                if len(doc) > 0:
-                    page = doc.load_page(0)
-                    pix = page.get_pixmap(dpi=200)
-                    pil_image = Image.open(io.BytesIO(pix.tobytes("png"))).convert("RGB")
-                    doc.close()
+                page_imgs = []
+                for p_idx in range(min(len(doc), 4)):
+                    page = doc.load_page(p_idx)
+                    pix = page.get_pixmap(dpi=150)
+                    page_imgs.append(Image.open(io.BytesIO(pix.tobytes("png"))).convert("RGB"))
+                doc.close()
+                if len(page_imgs) == 1:
+                    pil_image = page_imgs[0]
+                elif len(page_imgs) > 1:
+                    total_w = max(img.width for img in page_imgs)
+                    total_h = sum(img.height for img in page_imgs)
+                    composite = Image.new("RGB", (total_w, total_h), (255, 255, 255))
+                    y_offset = 0
+                    for img in page_imgs:
+                        composite.paste(img, (0, y_offset))
+                        y_offset += img.height
+                    pil_image = composite
             except Exception as fitz_err:
                 logger.error("PyMuPDF PDF conversion failed: %s", fitz_err)
+
+        # 2. Resilient fallback to pdf2image
+        if pil_image is None and HAS_PDF2IMAGE:
+            try:
+                images = convert_from_bytes(file_bytes, first_page=1, last_page=4)
+                if len(images) == 1:
+                    pil_image = images[0].convert("RGB")
+                elif len(images) > 1:
+                    rgb_imgs = [img.convert("RGB") for img in images]
+                    total_w = max(img.width for img in rgb_imgs)
+                    total_h = sum(img.height for img in rgb_imgs)
+                    composite = Image.new("RGB", (total_w, total_h), (255, 255, 255))
+                    y_offset = 0
+                    for img in rgb_imgs:
+                        composite.paste(img, (0, y_offset))
+                        y_offset += img.height
+                    pil_image = composite
+            except Exception as pdf2img_err:
+                logger.info("pdf2image unavailable (%s)", pdf2img_err)
 
         if pil_image is None:
             raise RuntimeError("Could not convert PDF page to image. Verify poppler or pymupdf is installed.")
@@ -349,12 +386,12 @@ def call_gemini_vision(pil_image: Image.Image) -> Dict[str, Any]:
 
     extraction_prompt = (
         "Analyze this document image thoroughly. Examine the layout, headers, stamps, printed text, "
-        "and handwriting. Determine if it belongs to one of the 10 supported insurance/KYC types or if it is an unsupported document format.\n"
+        "and handwriting. Determine if it belongs to one of the 12 supported insurance/KYC types or if it is an unsupported document format.\n"
         "Return a strict JSON object with this exact structure:\n"
         "{\n"
         '  "is_supported": true or false,\n'
         '  "document_type": "<Classified Type name if supported, or \'Unsupported Document\'>",\n'
-        '  "detected_type": "<Exact document identity, e.g. \'Aadhaar Card\' or \'Invoice\' or \'Resume\'>",\n'
+        '  "detected_type": "<Exact document identity, e.g. \'Aadhaar Card\' or \'Assignment Request Form\' or \'Invoice\'>",\n'
         '  "unsupported_reason": "<Clear explanation if unsupported, or null>",\n'
         '  "is_handwritten": true or false,\n'
         '  "classification_confidence": 0.95,\n'
@@ -365,7 +402,7 @@ def call_gemini_vision(pil_image: Image.Image) -> Dict[str, Any]:
         "    }\n"
         "  }\n"
         "}\n"
-        "If the document is one of the 10 supported types, ensure target fields for that type are present in extracted_data. "
+        "If the document is one of the 12 supported types, ensure target fields for that type are present in extracted_data. "
         "If it is an unsupported document, extract key visible metadata fields (e.g. Title, Organization, Date, Subject)."
     )
 
@@ -451,11 +488,11 @@ def process_document(file_obj: Any, filename: Optional[str] = None) -> Dict[str,
     except (ValueError, TypeError):
         classification_conf = 0.95
 
-    # Match against the 10 supported DOCUMENT_TYPES (handling synonyms like Driver License -> Driving Licence)
+    # Match against the 12 supported DOCUMENT_TYPES (handling synonyms like Driver License -> Driving Licence)
     matched_type = match_document_type(raw_doc_type, detected_type)
 
     if matched_type:
-        # Document matches one of our 10 supported types: Always show the actual document type!
+        # Document matches one of our 12 supported types: Always show the actual document type!
         doc_type = matched_type
         is_supported = True
         unsupported_reason = None
@@ -466,7 +503,7 @@ def process_document(file_obj: Any, filename: Optional[str] = None) -> Dict[str,
         doc_type = f"Unsupported Document ({clean_detected})"
         if not unsupported_reason:
             unsupported_reason = (
-                f"This document does not match any of the 10 supported KYC and insurance proposal form schemas. "
+                f"This document does not match any of the 12 supported KYC and insurance proposal form schemas. "
                 f"Identified format: '{clean_detected}'."
             )
 

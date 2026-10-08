@@ -87,6 +87,24 @@ class SuitabilityProfiler(BaseDocumentSchema):
     date: FieldExtraction
     place: FieldExtraction
 
+# 11. Assignment Request Form
+class AssignmentRequestForm(BaseDocumentSchema):
+    policy_number: FieldExtraction
+    policyholder_name: FieldExtraction
+    assignee_name: FieldExtraction
+    reason_for_assignment: FieldExtraction
+    date: FieldExtraction
+    place: FieldExtraction
+
+# 12. Proposal Form
+class ProposalForm(BaseDocumentSchema):
+    application_number: FieldExtraction
+    name_of_life_assured: FieldExtraction
+    insurance_plan_name: FieldExtraction
+    premium_amount: FieldExtraction
+    date: FieldExtraction
+    place: FieldExtraction
+
 # Flagging Report Schema
 class FlaggedFieldRecord(BaseModel):
     document_filename: str

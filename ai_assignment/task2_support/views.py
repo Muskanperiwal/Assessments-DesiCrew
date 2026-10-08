@@ -38,19 +38,24 @@ SYSTEM_PROMPT = (
 )
 
 GEMINI_MODEL_CANDIDATES = [
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
+    "gemini-3.5-flash-lite",
+    "gemini-3.5-flash",
+    "gemini-3.8-flash",
+    "gemini-3.1-flash-lite",
     "gemini-flash-latest",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash",
+    "gemini-flash-lite-latest",
 ]
 
 
 def is_person_lookup_query(message: str) -> bool:
-    low = message.lower()
+    low = message.lower().strip()
     return bool(
-        re.search(r'\b(do you know|who is|who\'s|tell me about)\b', low)
-        or (len(message.split()) <= 6 and re.search(r'\b[a-z]{4,}\b', low))
+        re.match(r'^(who\s+is|who\'s|who\s+was|tell\s+me\s+about)\s+([a-z\s]+)$', low)
+        and not any(w in low for w in [
+            'skill', 'skills', 'project', 'projects', 'education', 'degree',
+            'experience', 'work', 'email', 'phone', 'contact', 'salary', 'stipend',
+            'policy', 'rule', 'terms', 'sla', 'pricing', 'refund', 'what', 'how', 'which'
+        ])
     )
 
 
@@ -188,10 +193,65 @@ def api_support_chat(request: HttpRequest) -> JsonResponse:
     topic_history = list(memory.topic_history)
     active_topic = memory.active_topic
 
-    # 2. Hybrid RAG retrieval (expanded query + single-file focus)
+    # Track active document if provided or uploaded
+    active_doc_param = data.get('active_document')
+    if active_doc_param:
+        memory.active_document = active_doc_param
+
+    # Detect if query refers to "this pdf", "this file", "this document", "what is this related to", etc.
+    is_referencing_current_doc = bool(
+        re.search(r'\b(this|the|my|uploaded|current)\s+(pdf|document|doc|file|image|card|sheet|paper)\b', user_message.lower())
+        or re.search(r'\b(what is this|what does this|who is this|summarize this|tell me about this|related to what|what is in this)\b', user_message.lower())
+    )
+
+    uploaded_docs = RAG_ENGINE.get_uploaded_documents()
+    latest_uploaded = uploaded_docs[-1]['name'] if uploaded_docs else None
+    explicit_file = RAG_ENGINE.detect_filename_in_query(user_message)
+
     retrieval_query = memory.build_retrieval_query(user_message)
-    source_lock = RAG_ENGINE.detect_filename_in_query(user_message) or memory.get_document_lock(user_message)
-    relevant_chunks = get_relevant_context(retrieval_query, top_k=5, source_file_lock=source_lock)
+    source_lock = None
+
+    if explicit_file:
+        source_lock = explicit_file
+        memory.active_document = explicit_file
+        relevant_chunks = get_relevant_context(retrieval_query, top_k=5, source_file_lock=source_lock)
+    elif is_referencing_current_doc:
+        source_lock = memory.active_document or latest_uploaded
+        if source_lock and len(user_message.split()) <= 8:
+            clean_stem = re.sub(r'[\.\-_]', ' ', source_lock)
+            retrieval_query = f"{retrieval_query} {clean_stem}"
+        relevant_chunks = get_relevant_context(retrieval_query, top_k=5, source_file_lock=source_lock)
+    else:
+        # Search globally across the knowledge base to detect which document best answers the query
+        global_chunks = get_relevant_context(retrieval_query, top_k=8, source_file_lock=None)
+
+        if global_chunks:
+            top_file = global_chunks[0].get("source_file")
+
+            # Compare relevance of active document vs top candidate across chunks
+            if memory.active_document and top_file != memory.active_document:
+                top_score = RAG_ENGINE._chunk_score(user_message, global_chunks[0])
+                active_chunks = [c for c in global_chunks if c.get("source_file") == memory.active_document]
+                active_score = RAG_ENGINE._chunk_score(user_message, active_chunks[0]) if active_chunks else 0.0
+
+                # Only keep active document if query is an ambiguous follow-up AND active document has comparable score
+                if memory.is_likely_follow_up(user_message) and active_score > 5.0 and active_score >= top_score - 4.0:
+                    top_file = memory.active_document
+
+            source_lock = top_file
+            relevant_chunks = [c for c in global_chunks if c.get("source_file") == top_file][:5]
+            if len(relevant_chunks) < 3 and top_file:
+                doc_specific = get_relevant_context(retrieval_query, top_k=5, source_file_lock=top_file)
+                if doc_specific:
+                    relevant_chunks = doc_specific
+        else:
+            relevant_chunks = []
+
+    if source_lock:
+        memory.active_document = source_lock
+        if source_lock not in memory.covered_documents:
+            memory.covered_documents.append(source_lock)
+
     formatted_context = format_context(relevant_chunks)
     session_brief = memory.get_session_brief(max_turns=8)
 
@@ -249,6 +309,11 @@ def api_support_chat(request: HttpRequest) -> JsonResponse:
         primary_chunk = None
         current_topic = "General Support"
         primary_citation = "[Doc: Customer_Support_Policy.pdf, Page: 2, Section: Service Level Agreements (SLAs) & Response Windows]"
+    if primary_chunk and primary_chunk.get("source_file"):
+        doc_src = primary_chunk.get("source_file")
+        memory.active_document = doc_src
+        if doc_src not in memory.covered_documents:
+            memory.covered_documents.append(doc_src)
 
     all_citations = [c.get("citation") for c in relevant_chunks if c.get("citation")]
 
@@ -303,7 +368,10 @@ def api_support_chat(request: HttpRequest) -> JsonResponse:
     )
 
     # Ensure mandatory citation is present in the final reply
-    if primary_citation and primary_citation not in reply_text and "Doc:" not in reply_text:
+    found_citations = re.findall(r'\[Doc:\s*[^\]]+\]', reply_text)
+    if found_citations:
+        primary_citation = found_citations[0]
+    elif primary_citation and primary_citation not in reply_text and "Doc:" not in reply_text:
         reply_text += f"\n\n**Official Citation:** `{primary_citation}`"
 
     # 8. Record Turn in Persistent Session Memory
@@ -353,6 +421,8 @@ def api_support_chat(request: HttpRequest) -> JsonResponse:
         "total_turns": memory.turn_count,
         "chat_id": chat_id,
         "source_file": primary_chunk.get("source_file") if primary_chunk else None,
+        "active_document": memory.active_document,
+        "covered_documents": list(memory.covered_documents),
     })
 
 
@@ -389,8 +459,8 @@ def call_gemini_chat(
 
         import time
         now = time.time()
-        deadline = now + 6.0
-        active_keys = [k for k in keys_pool if k and (_QUOTA_EXHAUSTED_KEYS.get(k, 0) + 300 < now)]
+        deadline = now + 15.0
+        active_keys = [k for k in keys_pool if k and (_QUOTA_EXHAUSTED_KEYS.get(k, 0) + 120 < now)]
 
         for key_candidate in active_keys:
             if time.time() > deadline:
@@ -422,9 +492,9 @@ def call_gemini_chat(
                     if "404" in err_str or "not found" in err_str.lower():
                         _EXCLUDED_MODELS.add(model_name)
                     elif "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                        _QUOTA_EXHAUSTED_KEYS[key_candidate] = time.time()
                         break
                     continue
-            _QUOTA_EXHAUSTED_KEYS[key_candidate] = time.time()
     except Exception as general_err:
         logger.error(f"Failed invoking Gemini: {general_err}")
 
@@ -599,6 +669,13 @@ def api_upload_document(request: HttpRequest) -> JsonResponse:
         result = RAG_ENGINE.index_custom_document(file_bytes, filename, content_type)
         if not result.get("success"):
             return JsonResponse({"error": result.get("error", "Failed to index document.")}, status=400)
+
+        chat_id = request.POST.get('chat_id')
+        if chat_id:
+            memory = get_session_memory(request, chat_id=chat_id)
+            memory.active_document = result.get("filename", filename)
+            save_session_memory(request, memory, chat_id=chat_id)
+
         return JsonResponse(result)
     except Exception as e:
         logger.error(f"Error in api_upload_document: {e}", exc_info=True)
