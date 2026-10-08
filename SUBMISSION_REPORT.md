@@ -7,7 +7,7 @@
 
 ---
 
-## 📑 Executive Summary & Table of Contents
+## Executive summary and table of contents
 
 This document contains the complete technical solutions, architectural documentation, empirical evaluation results, and text answers for the three tasks outlined in `Questions.docx` for the **Data Science Internship at DesiCrew Solutions**.
 

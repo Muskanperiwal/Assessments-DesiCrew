@@ -7,7 +7,7 @@ A modular, production-ready Django project implementing three specialized AI sys
 
 ---
 
-## 📁 Directory Architecture
+## Directory architecture
 
 ```text
 ai_assignment/
@@ -61,7 +61,7 @@ ai_assignment/
 
 ---
 
-## ⚙️ Quick Start Guide
+## Quick start guide
 
 ### 1. Prerequisites & Environment Setup
 Ensure Python 3.10+ is installed and your virtual environment is active:
@@ -98,7 +98,7 @@ Open **[http://127.0.0.1:8000/](http://127.0.0.1:8000/)** in your browser to acc
 
 ---
 
-## 🧭 Application Modules & Routes
+## Application modules and routes
 
 | Module | Route | Key Features |
 | :--- | :--- | :--- |
@@ -109,7 +109,7 @@ Open **[http://127.0.0.1:8000/](http://127.0.0.1:8000/)** in your browser to acc
 
 ---
 
-## 📡 REST API Endpoints
+## REST API endpoints
 
 ### Task 1: Data Analyst
 - **`POST /task1/api/chat/`**:

@@ -280,7 +280,7 @@ def synthesize_deterministic_support_reply(
     # 2. Anti-Repetition Acknowledgment
     if already_delivered_count > 0:
         reply_parts.append(
-            "> ℹ️ *As discussed earlier in this session, you have already received the baseline policy for this topic. "
+            "> **Note:** *As discussed earlier in this session, you have already received the baseline policy for this topic. "
             "(Avoiding repeating previously delivered rules).* Here are the specific points addressing your inquiry:\n\n"
         )
 

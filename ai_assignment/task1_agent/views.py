@@ -170,7 +170,7 @@ def fallback_pandas_response(message: str) -> dict:
         code = "print(df[['Product ID', 'Product Name', 'Hand-In-Stock', 'Number of Units Sold']].sort_values(by='Hand-In-Stock').head(10))"
         out = execute_pandas_code(code)
         reply = (
-            "### 🚨 Low Stock & Replenishment Priority\n\n"
+            "### Low stock and replenishment priority\n\n"
             "Here are the items with the lowest current hand-in-stock levels requiring operational attention:\n\n"
             f"```text\n{out}\n```\n\n"
             "**Analyst Recommendations:**\n"
@@ -181,7 +181,7 @@ def fallback_pandas_response(message: str) -> dict:
         code = "print(df[['Product ID', 'Product Name', 'Number of Units Sold', 'Cost Price Total (USD)']].sort_values(by='Number of Units Sold', ascending=False).head(5))"
         out = execute_pandas_code(code)
         reply = (
-            "### 🏆 Top 5 Performing Products by Sales Volume\n\n"
+            "### Top 5 performing products by sales volume\n\n"
             "The top sold products identified across your inventory catalog:\n\n"
             f"```text\n{out}\n```\n\n"
             "**Key Findings:** These high-velocity SKUs represent your core revenue drivers. Ensure supply chain continuity to prevent stockouts."
@@ -197,7 +197,7 @@ def fallback_pandas_response(message: str) -> dict:
         )
         out = execute_pandas_code(code)
         reply = (
-            "### 📊 Inventory Valuation & Catalog Summary\n\n"
+            "### Inventory valuation and catalog summary\n\n"
             f"{out}\n\n"
             f"- **Catalog Size:** {len(df)} active inventory SKUs registered.\n"
             "- **Active Valuation:** Cumulative total cost value of inventory assets."
@@ -206,7 +206,7 @@ def fallback_pandas_response(message: str) -> dict:
         code = "print(df.describe().to_string())"
         out = execute_pandas_code(code)
         reply = (
-            f"### 📈 Inventory Dataset Analysis\n\n"
+            f"### Inventory dataset analysis\n\n"
             f"Found **{len(df)} products** in the loaded dataset.\n\n"
             f"```text\n{out}\n```\n\n"
             "> *Note: Add your Gemini API keys to `.env` to enable live Gemini AI function calling.*"

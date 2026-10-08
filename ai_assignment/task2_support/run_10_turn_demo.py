@@ -58,7 +58,7 @@ def run_10_turn_demonstration():
     client.post('/task2/api/reset/')
 
     print("=" * 85)
-    print("🤖 TASK 2: DOCUMENT-AWARE SUPPORT ASSISTANT — 10-TURN BENCHMARK AUDIT")
+    print("TASK 2: DOCUMENT-AWARE SUPPORT ASSISTANT — 10-TURN BENCHMARK AUDIT")
     print("=" * 85)
 
     topic_history = []
@@ -68,7 +68,7 @@ def run_10_turn_demonstration():
 
     for idx, user_query in enumerate(CONVERSATION_TURNS, 1):
         print(f"\n" + "-" * 85)
-        print(f"👤 [TURN {idx}/10] USER: {user_query}")
+        print(f"[TURN {idx}/10] USER: {user_query}")
         print("-" * 85)
 
         response = client.post(
@@ -78,7 +78,7 @@ def run_10_turn_demonstration():
         )
 
         if response.status_code != 200:
-            print(f"❌ Error HTTP {response.status_code}: {response.content}")
+            print(f"[ERROR] HTTP {response.status_code}: {response.content}")
             continue
 
         data = response.json()
@@ -98,23 +98,23 @@ def run_10_turn_demonstration():
             citations_count += 1
 
         # Print Analytics Badges
-        print(f"🎯 Topic Identified   : {topic}")
+        print(f"Topic identified      : {topic}")
         if is_switch:
             if returning:
-                print(f"🔄 Topic Transition   : Returning to previously discussed topic!")
+                print("Topic transition      : Returning to previously discussed topic")
             else:
-                print(f"🔀 Topic Transition   : Graceful topic shift acknowledged.")
+                print("Topic transition      : Graceful topic shift acknowledged")
         else:
-            print(f"🔗 Context Continuity : Continuing within current dialogue topic.")
+            print("Context continuity    : Continuing within current dialogue topic")
 
         if "Avoiding repeating" in reply or "baseline policy" in reply:
-            print(f"🛡️ Anti-Repetition     : ACTIVE (Suppressed duplicate boilerplate, delivered delta facts).")
+            print("Anti-repetition       : ACTIVE (suppressed duplicate boilerplate, delivered delta facts)")
 
-        print(f"📖 Document Citation  : {citation}")
-        print(f"\n🤖 ASSISTANT RESPONSE:\n{reply}\n")
+        print(f"Document citation     : {citation}")
+        print(f"\nASSISTANT RESPONSE:\n{reply}\n")
 
     print("\n" + "=" * 85)
-    print("📊 10-TURN SESSION AUDIT SUMMARY")
+    print("10-TURN SESSION AUDIT SUMMARY")
     print("=" * 85)
     print(f"• Total Conversation Turns Completed : {len(CONVERSATION_TURNS)}")
     print(f"• Distinct Policy Topics Explored     : {len(topic_history)}")

@@ -7,11 +7,11 @@ A unified, production-ready Django 5.x application housing three enterprise AI m
 
 ---
 
-## 🚀 Quick Deployment Guide
+## Quick deployment guide
 
 This project is pre-configured with **WhiteNoise**, **Gunicorn**, **Procfile**, **build.sh**, and **Dockerfile** for zero-friction cloud deployment.
 
-### 🌟 Option 1: Render.com (Recommended — Fast & Free)
+### Option 1: Render.com (recommended — fast and free)
 
 1. Push your code to a **GitHub** repository.
 2. Sign in to [Render](https://render.com/) and click **New + > Web Service**.
@@ -40,7 +40,7 @@ This project is pre-configured with **WhiteNoise**, **Gunicorn**, **Procfile**, 
 
 ---
 
-### 🚂 Option 2: Railway.app
+### Option 2: Railway.app
 
 1. Go to [Railway.app](https://railway.app/) and create a **New Project**.
 2. Click **Deploy from GitHub repo** and select this repository.
@@ -53,7 +53,7 @@ This project is pre-configured with **WhiteNoise**, **Gunicorn**, **Procfile**, 
 
 ---
 
-### 🐳 Option 3: Docker & Docker Compose (Any Cloud VPS, AWS, GCP, Azure, DigitalOcean)
+### Option 3: Docker and Docker Compose (VPS, AWS, GCP, Azure, DigitalOcean)
 
 A multi-stage [Dockerfile](file:///C:/Users/nikhil.singh01_livsp/Desktop/muskan%20periwal/Dockerfile) and [docker-compose.yml](file:///C:/Users/nikhil.singh01_livsp/Desktop/muskan%20periwal/docker-compose.yml) are included.
 
@@ -80,7 +80,7 @@ docker run -d -p 8000:8000 \
 
 ---
 
-### 🐍 Option 4: PythonAnywhere (Free Python Hosting)
+### Option 4: PythonAnywhere (free Python hosting)
 
 1. Sign up at [PythonAnywhere](https://www.pythonanywhere.com/).
 2. Open a **Bash Console** and clone the repo:
@@ -113,7 +113,7 @@ docker run -d -p 8000:8000 \
 
 ---
 
-### 🖥️ Option 5: Local Execution (Development)
+### Option 5: Local execution (development)
 
 1. Activate your virtual environment:
    ```bash
@@ -138,7 +138,7 @@ docker run -d -p 8000:8000 \
 
 ---
 
-## 🔑 Environment Variables Reference
+## Environment variables reference
 
 | Variable | Required | Description | Example |
 | :--- | :---: | :--- | :--- |
