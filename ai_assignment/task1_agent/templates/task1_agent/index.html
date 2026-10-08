@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -159,10 +159,7 @@
                     <form id="chatForm" onsubmit="handleSubmit(event)" class="glass-composer rounded-2xl p-2 flex items-end gap-2">
                         {% csrf_token %}
                         <textarea id="messageInput" rows="1" placeholder="Message inventory analyst…" class="w-full bg-transparent px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none"></textarea>
-                        <button type="button" id="stopBtn" onclick="stopRequest()" class="hidden btn btn-stop btn-sm p-2.5 !min-w-[2.5rem] flex-shrink-0" aria-label="Stop" title="Stop">
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
-                        </button>
-                        <button type="submit" id="sendBtn" class="btn btn-primary btn-sm p-2.5 !min-w-[2.5rem] flex-shrink-0" aria-label="Send">
+                        <button type="submit" id="sendBtn" class="btn btn-primary btn-sm p-2.5 !min-w-[2.5rem] flex-shrink-0 transition-all" aria-label="Send" title="Send message">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"/></svg>
                         </button>
                     </form>
@@ -210,8 +207,7 @@
                 </div>
                 <textarea id="playgroundCode" rows="6" class="code-surface w-full font-mono text-xs p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/40" placeholder="print(df.head())"></textarea>
                 <div class="flex justify-end gap-2">
-                    <button type="button" onclick="stopPlayground()" id="stopPlaygroundBtn" class="hidden btn btn-stop btn-sm">Stop</button>
-                    <button type="button" onclick="runPlaygroundCode()" id="runPlaygroundBtn" class="btn btn-primary btn-sm">Execute</button>
+                    <button type="button" onclick="runPlaygroundCode()" id="runPlaygroundBtn" class="btn btn-primary btn-sm transition-all">Execute</button>
                 </div>
                 <pre id="playgroundOutput" class="code-surface text-xs p-3 rounded-xl min-h-[72px] font-mono">Run code to see results…</pre>
                 <div id="playgroundCharts" class="space-y-2"></div>
@@ -225,7 +221,6 @@
         const loadingIndicator = document.getElementById('loadingIndicator');
         const loadingText = document.getElementById('loadingText');
         const sendBtn = document.getElementById('sendBtn');
-        const stopBtn = document.getElementById('stopBtn');
         const sidebar = document.getElementById('sidebar');
         let conversationHistory = [];
         let sheetCache = null;
@@ -233,6 +228,9 @@
         let chatAbortController = null;
         let playgroundAbortController = null;
         const welcomeHtml = chatMessages.innerHTML;
+
+        const SEND_ICON_HTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"/></svg>';
+        const STOP_ICON_HTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>';
 
         function isAbortError(err) {
             return err && (err.name === 'AbortError' || err.message === 'The user aborted a request.');
@@ -299,10 +297,32 @@
             loadingText.textContent = label || 'Working…';
             loadingIndicator.classList.toggle('hidden', !on);
             messageInput.disabled = on;
-            sendBtn.disabled = on;
-            sendBtn.classList.toggle('hidden', on);
-            stopBtn.classList.toggle('hidden', !on);
+            if (on) {
+                sendBtn.classList.remove('btn-primary');
+                sendBtn.classList.add('btn-stop');
+                sendBtn.innerHTML = STOP_ICON_HTML;
+                sendBtn.title = 'Stop generation';
+                sendBtn.setAttribute('aria-label', 'Stop generation');
+                sendBtn.type = 'button';
+                sendBtn.disabled = false;
+            } else {
+                sendBtn.classList.remove('btn-stop');
+                sendBtn.classList.add('btn-primary');
+                sendBtn.innerHTML = SEND_ICON_HTML;
+                sendBtn.title = 'Send message';
+                sendBtn.setAttribute('aria-label', 'Send');
+                sendBtn.type = 'submit';
+                sendBtn.disabled = false;
+            }
         }
+
+        sendBtn.addEventListener('click', (e) => {
+            if (chatAbortController) {
+                e.preventDefault();
+                stopRequest();
+            }
+        });
+
         function chartsHtml(data) {
             const list = data.charts || [];
             if (!list.length) return '';
@@ -339,8 +359,12 @@
         }
         async function handleSubmit(e) {
             if (e) e.preventDefault();
+            if (chatAbortController) {
+                stopRequest();
+                return;
+            }
             const text = messageInput.value.trim();
-            if (!text || chatAbortController) return;
+            if (!text) return;
             appendUserMessage(text);
             conversationHistory.push({ role: 'user', content: text });
             messageInput.value = '';
@@ -408,14 +432,19 @@
             document.getElementById('playgroundCode').value = SNIPPETS[key] || '';
         }
         async function runPlaygroundCode() {
+            if (playgroundAbortController) {
+                stopPlayground();
+                return;
+            }
             const code = document.getElementById('playgroundCode').value.trim();
             const outputElem = document.getElementById('playgroundOutput');
             const chartBox = document.getElementById('playgroundCharts');
             const runBtn = document.getElementById('runPlaygroundBtn');
-            const stopPlaygroundBtn = document.getElementById('stopPlaygroundBtn');
-            if (!code || playgroundAbortController) return;
-            runBtn.disabled = true;
-            stopPlaygroundBtn.classList.remove('hidden');
+            if (!code) return;
+            runBtn.classList.remove('btn-primary');
+            runBtn.classList.add('btn-stop');
+            runBtn.textContent = 'Stop';
+            runBtn.title = 'Stop execution';
             outputElem.textContent = 'Executing…';
             chartBox.innerHTML = '';
             playgroundAbortController = new AbortController();
@@ -435,8 +464,10 @@
                     : ('Execution error: ' + err.message);
             } finally {
                 playgroundAbortController = null;
-                runBtn.disabled = false;
-                stopPlaygroundBtn.classList.add('hidden');
+                runBtn.classList.remove('btn-stop');
+                runBtn.classList.add('btn-primary');
+                runBtn.textContent = 'Execute';
+                runBtn.title = 'Execute code';
             }
         }
 

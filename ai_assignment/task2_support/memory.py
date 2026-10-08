@@ -94,6 +94,29 @@ class SessionMemory:
         triggered = (max_cosine >= cosine_threshold) or (already_delivered_count > 0)
         return triggered, max_cosine, already_delivered_count
 
+    @staticmethod
+    def parse_source_file(citation: str) -> str:
+        if not citation:
+            return ""
+        match = re.search(r'\[Doc:\s*([^,\]]+)', citation)
+        return match.group(1).strip() if match else ""
+
+    def get_document_lock(self, user_message: str) -> Optional[str]:
+        """On follow-ups, stay on the same source file unless the user changes subject."""
+        low = user_message.lower()
+        if re.search(r'\b(compare|versus|vs\.?|difference between|both documents)\b', low):
+            return None
+        if re.search(
+            r'\b(billing|subscription|refund|security|mfa|password|warranty|shipment|sla|p[1-4])\b',
+            low,
+        ) and not self.is_likely_follow_up(user_message):
+            return None
+        if self.is_likely_follow_up(user_message) and self.turns:
+            last = self.turns[-1]
+            src = last.get("source_file") or self.parse_source_file(last.get("citation", ""))
+            return src or None
+        return None
+
     def record_turn(
         self,
         user_query: str,
@@ -101,7 +124,8 @@ class SessionMemory:
         delivered_facts: List[str],
         citation: str,
         assistant_reply: str,
-        citations: Optional[List[str]] = None
+        citations: Optional[List[str]] = None,
+        source_file: str = "",
     ) -> Dict[str, Any]:
         """Records a completed dialogue turn into persistent session memory."""
         turn_num = len(self.turns) + 1
@@ -128,10 +152,12 @@ class SessionMemory:
                 self.delivered_facts.add(fact_key)
                 new_facts.append(fact)
 
+        resolved_source = source_file or self.parse_source_file(citation)
         turn_record = {
             "turn_number": turn_num,
             "user_query": user_query,
             "topic": topic,
+            "source_file": resolved_source,
             "is_topic_switch": is_topic_switch,
             "previous_topic": previous_topic,
             "new_facts": new_facts,
@@ -159,6 +185,83 @@ class SessionMemory:
             messages.append({"role": "model", "content": turn.get("assistant_reply", "")})
         return messages
 
+    def get_last_user_query(self) -> str:
+        if not self.turns:
+            return ""
+        return (self.turns[-1].get("user_query") or "").strip()
+
+    def get_recent_topics(self, n: int = 3) -> List[str]:
+        seen: List[str] = []
+        for turn in reversed(self.turns):
+            topic = (turn.get("topic") or "").strip()
+            if topic and topic not in seen:
+                seen.append(topic)
+            if len(seen) >= n:
+                break
+        return seen
+
+    def is_likely_follow_up(self, user_message: str) -> bool:
+        """Heuristic: short or anaphoric messages depend on prior turns for retrieval."""
+        msg = user_message.strip()
+        if not msg:
+            return False
+        low = msg.lower()
+        if len(msg.split()) <= 14:
+            if re.search(
+                r'\b(it|that|this|those|they|them|same|also|second|third|first|previous|earlier|above|remind|again)\b',
+                low,
+            ):
+                return True
+            if low.startswith(('what about', 'how about', 'and ', 'also ', 'tell me more')):
+                return True
+        if re.search(r'\b(p[1-4]|method|step|option)\b', low) and len(msg.split()) <= 12 and self.turns:
+            return True
+        if re.search(r'\bwhat about\b.*\b(plan|method|option)\b', low) and self.turns:
+            return True
+        return False
+
+    def build_retrieval_query(self, user_message: str) -> str:
+        """Expand underspecified follow-ups with session topic + prior user question."""
+        parts = [user_message.strip()]
+        if self.is_likely_follow_up(user_message) and self.turns:
+            if self.active_topic:
+                parts.append(self.active_topic)
+            last_q = self.get_last_user_query()
+            if last_q and last_q.lower() != user_message.strip().lower():
+                parts.append(last_q)
+            for topic in self.get_recent_topics(2):
+                parts.append(topic)
+        # De-duplicate while preserving order
+        deduped: List[str] = []
+        seen_lower = set()
+        for p in parts:
+            key = p.lower()
+            if p and key not in seen_lower:
+                deduped.append(p)
+                seen_lower.add(key)
+        return " ".join(deduped)
+
+    def get_session_brief(self, max_turns: int = 6) -> str:
+        """Compact narrative of recent dialogue for the LLM (topics + facts already covered)."""
+        if not self.turns:
+            return "No prior turns in this session."
+        lines = []
+        if self.active_topic:
+            lines.append(f"Active topic: {self.active_topic}")
+        if self.topic_history:
+            lines.append(f"Topics visited: {', '.join(self.topic_history[-6:])}")
+        for turn in self.turns[-max_turns:]:
+            lines.append(
+                f"Turn {turn.get('turn_number')}: User asked about '{turn.get('topic', 'General')}' — "
+                f"\"{(turn.get('user_query') or '')[:120]}\""
+            )
+        if self.delivered_facts:
+            lines.append(
+                f"Facts already stated in session: {min(len(self.delivered_facts), 12)} tracked "
+                "(do not repeat verbatim; add new detail or confirm briefly)."
+            )
+        return "\n".join(lines)
+
     def get_summary(self) -> Dict[str, Any]:
         return {
             "total_turns": len(self.turns),
@@ -177,50 +280,71 @@ class SessionMemory:
         self.topic_switches = []
 
 
-def get_session_memory(request) -> SessionMemory:
+def get_session_memory(request, chat_id: Optional[str] = None) -> SessionMemory:
     """Retrieves or initializes SessionMemory stored in Django session."""
-    session_data = request.session.get("support_memory", None)
+    session_key = f"support_memory_{chat_id}" if chat_id else "support_memory"
+    session_data = request.session.get(session_key, None)
     if session_data:
         return SessionMemory(session_data)
     
-    # Backwards compatibility migration from legacy session keys
-    legacy_history = request.session.get("support_chat_history", [])
-    legacy_topics = request.session.get("support_topics", [])
-    legacy_active = request.session.get("support_active_topic", None)
-    legacy_facts = request.session.get("support_delivered_facts", [])
+    if not chat_id:
+        # Backwards compatibility migration from legacy session keys
+        legacy_history = request.session.get("support_chat_history", [])
+        legacy_topics = request.session.get("support_topics", [])
+        legacy_active = request.session.get("support_active_topic", None)
+        legacy_facts = request.session.get("support_delivered_facts", [])
 
-    if legacy_history:
-        turns = []
-        for i in range(0, len(legacy_history) - 1, 2):
-            turn_idx = (i // 2) + 1
-            turns.append({
-                "turn_number": turn_idx,
-                "user_query": legacy_history[i].get("content", ""),
-                "assistant_reply": legacy_history[i+1].get("content", ""),
-                "topic": legacy_active or "General Support",
-                "is_topic_switch": False,
-                "previous_topic": None,
-                "new_facts": [],
-                "citation": "",
-                "citations": []
+        if legacy_history:
+            turns = []
+            for i in range(0, len(legacy_history) - 1, 2):
+                turn_idx = (i // 2) + 1
+                turns.append({
+                    "turn_number": turn_idx,
+                    "user_query": legacy_history[i].get("content", ""),
+                    "assistant_reply": legacy_history[i+1].get("content", ""),
+                    "topic": legacy_active or "General Support",
+                    "is_topic_switch": False,
+                    "previous_topic": None,
+                    "new_facts": [],
+                    "citation": "",
+                    "citations": []
+                })
+            migrated = SessionMemory({
+                "turns": turns,
+                "delivered_facts": legacy_facts,
+                "topic_history": legacy_topics,
+                "active_topic": legacy_active,
+                "topic_switches": []
             })
-        migrated = SessionMemory({
-            "turns": turns,
-            "delivered_facts": legacy_facts,
-            "topic_history": legacy_topics,
-            "active_topic": legacy_active,
-            "topic_switches": []
-        })
-        return migrated
+            return migrated
 
     return SessionMemory()
 
 
-def save_session_memory(request, memory: SessionMemory):
+def save_session_memory(request, memory: SessionMemory, chat_id: Optional[str] = None):
     """Persists SessionMemory in Django session and updates legacy keys."""
-    request.session["support_memory"] = memory.to_dict()
-    request.session["support_chat_history"] = memory.get_chat_history()
-    request.session["support_topics"] = memory.topic_history
-    request.session["support_active_topic"] = memory.active_topic
-    request.session["support_delivered_facts"] = list(memory.delivered_facts)
+    session_key = f"support_memory_{chat_id}" if chat_id else "support_memory"
+    request.session[session_key] = memory.to_dict()
+    if not chat_id:
+        request.session["support_chat_history"] = memory.get_chat_history()
+        request.session["support_topics"] = memory.topic_history
+        request.session["support_active_topic"] = memory.active_topic
+        request.session["support_delivered_facts"] = list(memory.delivered_facts)
     request.session.modified = True
+
+
+def clear_session_memory(request, chat_id: Optional[str] = None):
+    """Clears memory for a specific chat or all support memory."""
+    if chat_id:
+        session_key = f"support_memory_{chat_id}"
+        if session_key in request.session:
+            del request.session[session_key]
+    else:
+        for k in list(request.session.keys()):
+            if k.startswith("support_memory"):
+                del request.session[k]
+        for key in ['support_chat_history', 'support_topics', 'support_active_topic', 'support_delivered_facts']:
+            if key in request.session:
+                del request.session[key]
+    request.session.modified = True
+

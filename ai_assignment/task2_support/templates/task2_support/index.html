@@ -3,460 +3,515 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Support Assistant</title>
+    <title>DocAware Support Assistant · Task 2</title>
     {% include 'partials/tailwind_setup.html' %}
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     {% include 'partials/app_theme.html' %}
     <style>
-        #chatMessages {
+        /* Minimalist scrollbars */
+        .chat-scroll {
             scrollbar-width: thin;
-            scrollbar-color: rgba(100, 116, 139, 0.25) transparent;
+            scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
         }
-        @media (max-width: 768px) {
-            #sidebar {
-                position: fixed;
-                inset: 0 auto 0 0;
-                height: 100%;
-                z-index: 40;
-            }
-            #sidebar.sidebar-hidden { transform: translateX(-100%); }
+        .chat-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb {
+            background-color: rgba(148, 163, 184, 0.25);
+            border-radius: 9999px;
         }
 
-        /* Compact, refined typography matching Task 1 and clean earlier version */
-        .msg-assistant {
-            font-size: 0.875rem !important; /* 14px */
-            line-height: 1.55 !important;
+        /* Typography & Markdown styling */
+        .prose-chat {
+            font-size: 0.9375rem; /* 15px */
+            line-height: 1.625;
+            color: var(--color-text);
         }
-        .msg-assistant .prose {
-            font-size: 0.875rem !important;
-            line-height: 1.55 !important;
-            color: inherit !important;
+        .prose-chat p {
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
         }
-        .msg-assistant .prose p {
-            font-size: 0.875rem !important;
-            margin-top: 0.45rem !important;
-            margin-bottom: 0.45rem !important;
-            line-height: 1.55 !important;
+        .prose-chat p:first-child { margin-top: 0; }
+        .prose-chat p:last-child { margin-bottom: 0; }
+        .prose-chat ul, .prose-chat ol {
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+            padding-left: 1.35rem;
         }
-        .msg-assistant .prose p:first-child {
-            margin-top: 0 !important;
+        .prose-chat li {
+            margin-top: 0.25rem;
+            margin-bottom: 0.25rem;
         }
-        .msg-assistant .prose p:last-child {
-            margin-bottom: 0 !important;
+        .prose-chat strong {
+            font-weight: 600;
+            color: var(--color-text);
         }
-        .msg-assistant .prose h1,
-        .msg-assistant .prose h2,
-        .msg-assistant .prose h3,
-        .msg-assistant .prose h4 {
-            font-size: 0.875rem !important; /* 14px compact bold headers */
-            font-weight: 600 !important;
-            margin-top: 0.65rem !important;
-            margin-bottom: 0.25rem !important;
-            color: var(--color-text) !important;
+        .prose-chat code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.8125rem;
+            background: rgba(15, 23, 42, 0.06);
+            padding: 0.15rem 0.35rem;
+            border-radius: 0.375rem;
         }
-        .msg-assistant .prose ul,
-        .msg-assistant .prose ol {
-            margin-top: 0.35rem !important;
-            margin-bottom: 0.45rem !important;
-            padding-left: 1.2rem !important;
+        html[data-theme="dark"] .prose-chat code,
+        html.dark .prose-chat code {
+            background: rgba(255, 255, 255, 0.1);
         }
-        .msg-assistant .prose li {
-            font-size: 0.875rem !important;
-            margin-top: 0.2rem !important;
-            margin-bottom: 0.2rem !important;
-            line-height: 1.5 !important;
+        .prose-chat blockquote {
+            border-left: 3px solid var(--color-teal);
+            padding-left: 0.75rem;
+            color: var(--color-text-secondary);
+            font-style: italic;
+            margin: 0.5rem 0;
         }
-        .msg-assistant .prose strong {
-            font-weight: 600 !important;
-            color: var(--color-text) !important;
+
+        /* Citation pill */
+        .citation-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-family: ui-monospace, monospace;
+            font-size: 0.75rem;
+            padding: 0.2rem 0.55rem;
+            border-radius: 0.5rem;
+            background: var(--color-teal-soft);
+            color: var(--color-teal);
+            border: 1px solid rgba(13, 148, 136, 0.2);
+            line-height: 1.25;
         }
-        .msg-user {
-            font-size: 0.875rem !important;
-            line-height: 1.5 !important;
+
+        /* Starter Prompt Card */
+        .prompt-card {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
         }
-        .citation-highlight {
-            background: var(--color-teal-soft) !important;
+        .prompt-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--color-teal);
+            box-shadow: 0 4px 14px rgba(13, 148, 136, 0.08);
+        }
+
+        /* Sidebar item active */
+        .chat-item-active {
+            background: rgba(13, 148, 136, 0.1) !important;
             color: var(--color-teal) !important;
-            padding: 0.12rem 0.35rem !important;
-            border-radius: 0.35rem !important;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
-            font-size: 0.75rem !important; /* 12px */
             font-weight: 500 !important;
-            border: 1px solid rgba(13, 148, 136, 0.2) !important;
-            display: inline-block !important;
-            margin: 0.1rem 0 !important;
-            vertical-align: baseline !important;
+        }
+        html[data-theme="dark"] .chat-item-active,
+        html.dark .chat-item-active {
+            background: rgba(13, 148, 136, 0.18) !important;
+            color: #2dd4bf !important;
         }
 
-        .scrollbar-none::-webkit-scrollbar {
-            display: none;
-        }
-        .scrollbar-none {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-
-        /* Refined Suggested Questions Chips matching glass UI */
-        .suggest-chip {
-            background: rgba(255, 255, 255, 0.72) !important;
-            border: 1px solid var(--color-border) !important;
-            color: var(--color-text-secondary) !important;
-            border-radius: 9999px !important;
-            padding: 0.35rem 0.8rem !important;
-            font-size: 0.75rem !important; /* text-xs */
-            font-weight: 500 !important;
-            white-space: nowrap !important;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            gap: 0.4rem !important;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
-            cursor: pointer !important;
-        }
-        .suggest-chip:hover {
-            background: #ffffff !important;
+        /* Upload Dropzone Hover State */
+        .dragover-active {
             border-color: var(--color-teal) !important;
-            color: var(--color-teal) !important;
-            transform: translateY(-1px) !important;
-            box-shadow: 0 2px 8px rgba(13, 148, 136, 0.15) !important;
-        }
-        .suggest-chip:active {
-            transform: scale(0.97) !important;
-        }
-        html[data-theme="dark"] .suggest-chip,
-        html.dark .suggest-chip {
-            background: rgba(30, 41, 59, 0.65) !important;
-            border-color: rgba(255, 255, 255, 0.1) !important;
-            color: #94a3b8 !important;
-        }
-        html[data-theme="dark"] .suggest-chip:hover,
-        html.dark .suggest-chip:hover {
-            background: rgba(30, 41, 59, 0.95) !important;
-            border-color: var(--color-teal) !important;
-            color: var(--color-teal) !important;
+            background: rgba(13, 148, 136, 0.05) !important;
         }
     </style>
 </head>
-<body class="app-theme min-h-screen flex flex-col antialiased app-bg">
+<body class="app-theme min-h-screen flex flex-col antialiased app-bg text-[var(--color-text)]">
+
     <div class="flex h-screen overflow-hidden">
 
-        <!-- Collapsible Left Inspector Panel matching Task 1 architecture -->
-        <aside id="sidebar" class="w-80 glass-panel border-r border-white/60 dark:border-white/10 flex flex-col flex-shrink-0 transition-all duration-300 z-30">
-            <!-- Sidebar Header matching Task 1 -->
-            <div class="p-4 border-b border-black/5 dark:border-white/5 flex items-center justify-between">
-                <div class="flex items-center gap-2.5 min-w-0">
-                    <div class="w-8 h-8 rounded-xl avatar-ai flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">AI</div>
-                    <div class="min-w-0">
-                        <h2 class="font-semibold text-[var(--color-text)] text-sm truncate">Support Assistant</h2>
-                        <p class="text-[11px] text-[var(--color-text-muted)]">Task 2 workspace</p>
+        <!-- ========================================================================= -->
+        <!-- LEFT SIDEBAR: ChatGPT-style Conversations List ("n number of chats")     -->
+        <!-- ========================================================================= -->
+        <aside id="sidebar" class="w-72 md:w-64 lg:w-72 glass-panel border-r border-[var(--color-border)] flex flex-col flex-shrink-0 transition-transform duration-300 z-40 fixed md:static inset-y-0 left-0 -translate-x-full md:translate-x-0 bg-[var(--color-surface)]">
+            
+            <!-- Sidebar Header & New Chat Button -->
+            <div class="p-3 border-b border-[var(--color-border)] flex flex-col gap-2.5">
+                <div class="flex items-center justify-between px-1">
+                    <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg avatar-ai flex items-center justify-center text-white text-[11px] font-bold">AI</div>
+                        <span class="font-semibold text-xs tracking-tight text-[var(--color-text)]">DocAware Support</span>
                     </div>
+                    <button type="button" onclick="toggleSidebar()" class="md:hidden p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-lg hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer" aria-label="Close sidebar">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
                 </div>
-                <button type="button" onclick="askReset()" title="New chat / Reset session" class="p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors flex-shrink-0">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+
+                <!-- "+ New Chat" Button -->
+                <button type="button" onclick="createNewChat()" class="btn btn-primary btn-sm w-full py-2 px-3 text-xs font-medium rounded-xl flex items-center justify-between shadow-sm cursor-pointer group">
+                    <span class="flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        <span>New chat</span>
+                    </span>
+                    <span class="text-[10px] opacity-75 font-mono group-hover:opacity-100">Ctrl+K</span>
                 </button>
             </div>
 
-            <!-- Scrollable Panel Content -->
-            <div id="sidebarContent" class="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
-                
-                <!-- Card 1: Active Topic Card -->
-                <div class="glass-inset rounded-[var(--radius-lg)] p-3 border border-[var(--color-border)]">
-                    <div class="flex items-center justify-between mb-1.5">
-                        <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Active Topic</span>
-                        <span id="topicSwitchBadge" class="hidden px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--color-teal-soft)] text-[var(--color-teal)]">Switched</span>
-                    </div>
-                    <div id="sidebarActiveTopic" class="text-sm font-bold text-[var(--color-text)] leading-snug break-words">
-                        General Support
-                    </div>
-                    <p id="sidebarTopicDesc" class="text-[11px] text-[var(--color-text-secondary)] mt-1.5 leading-relaxed">
-                        Awaiting initial query to index conversation domain.
-                    </p>
+            <!-- Scrollable Chats History List -->
+            <div class="flex-1 overflow-y-auto p-2 space-y-1 chat-scroll" id="chatListContainer">
+                <div class="px-2 pt-2 pb-1 flex items-center justify-between text-[11px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
+                    <span>Recent Chats</span>
+                    <span id="chatCountBadge" class="text-[10px] font-mono opacity-80">0</span>
                 </div>
 
-                <!-- Card 2: Memory & Anti-Repetition Status -->
-                <div class="glass-inset rounded-[var(--radius-lg)] p-3 border border-[var(--color-border)] space-y-2.5">
-                    <div class="flex items-center justify-between">
-                        <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Memory Inspector</span>
-                        <span id="antiRepeatStatus" class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-[var(--color-text-muted)]">Listening</span>
-                    </div>
-                    
-                    <!-- Turn Progress Bar -->
-                    <div>
-                        <div class="flex justify-between text-[11px] text-[var(--color-text-secondary)] mb-1">
-                            <span>Benchmark Progress</span>
-                            <span id="sidebarTurnText" class="font-mono font-medium">Turn 0 of 10</span>
-                        </div>
-                        <div class="w-full bg-black/5 dark:bg-white/10 rounded-full h-1.5 overflow-hidden">
-                            <div id="sidebarProgressBar" class="bg-[var(--color-teal)] h-1.5 rounded-full transition-all duration-300 w-0"></div>
-                        </div>
-                    </div>
-
-                    <div class="pt-1.5 border-t border-[var(--color-border)]/60 text-[11px] text-[var(--color-text-secondary)]" id="sidebarMemoryDetail">
-                        Session memory is empty. Queries build a 10-turn persistent context.
-                    </div>
+                <!-- Chat Threads list rendered dynamically via JS -->
+                <div id="chatsList" class="space-y-0.5">
+                    <!-- Populated by JavaScript -->
                 </div>
-
-                <!-- Card 3: Topic Journey Timeline -->
-                <div class="glass-inset rounded-[var(--radius-lg)] p-3 border border-[var(--color-border)]">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Topic Trail</span>
-                        <span id="topicTrailCount" class="text-[10px] font-mono text-[var(--color-text-muted)]">0 explored</span>
-                    </div>
-                    <ul id="sidebarTopicList" class="space-y-1.5 text-[11px]">
-                        <li class="text-[var(--color-text-muted)] italic">No topic shifts recorded yet</li>
-                    </ul>
-                </div>
-
-                <!-- Card 4: Indexed Support Knowledge Base -->
-                <div class="glass-inset rounded-[var(--radius-lg)] p-3 border border-[var(--color-border)] space-y-2.5">
-                    <div class="flex items-center justify-between">
-                        <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Knowledge Base</span>
-                        <span id="kbChunkBadge" class="text-[10px] font-mono text-[var(--color-teal)] font-medium">{{ indexed_chunks_count }} Chunks</span>
-                    </div>
-                    <div id="kbFileList" class="space-y-1.5 text-[11px] max-h-36 overflow-y-auto pr-0.5">
-                        <div class="flex items-center gap-1.5 text-[var(--color-text-secondary)]">
-                            <span class="text-red-500 font-bold text-[9px] px-1 py-0.2 rounded bg-red-500/10 shrink-0">PDF</span>
-                            <span class="truncate" title="Customer_Support_Policy.pdf">Customer_Support_Policy.pdf</span>
-                        </div>
-                        <div class="flex items-center gap-1.5 text-[var(--color-text-secondary)]">
-                            <span class="text-red-500 font-bold text-[9px] px-1 py-0.2 rounded bg-red-500/10 shrink-0">PDF</span>
-                            <span class="truncate" title="Subscription_Billing_Guide.pdf">Subscription_Billing_Guide.pdf</span>
-                        </div>
-                        <div class="flex items-center gap-1.5 text-[var(--color-text-secondary)]">
-                            <span class="text-red-500 font-bold text-[9px] px-1 py-0.2 rounded bg-red-500/10 shrink-0">PDF</span>
-                            <span class="truncate" title="Account_Security_Privacy.pdf">Account_Security_Privacy.pdf</span>
-                        </div>
-                        {% for uf in uploaded_files %}
-                        <div class="flex items-center justify-between gap-1 text-[var(--color-text-secondary)] group hover:text-[var(--color-text)] transition-colors" data-file="{{ uf.name }}">
-                            <div class="flex items-center gap-1.5 min-w-0">
-                                <span class="{% if uf.is_pdf %}text-red-500 bg-red-500/10{% else %}text-emerald-500 bg-emerald-500/10{% endif %} font-bold text-[9px] px-1 py-0.2 rounded shrink-0">{% if uf.is_pdf %}PDF{% else %}IMG{% endif %}</span>
-                                <span class="truncate" title="{{ uf.name }}">{{ uf.name }}</span>
-                            </div>
-                            <button type="button" onclick="deleteUploadedDocument('{{ uf.name }}', this)" title="Remove {{ uf.name }}" class="text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-500/10 p-0.5 rounded transition-all shrink-0" aria-label="Remove {{ uf.name }}">
-                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                            </button>
-                        </div>
-                        {% endfor %}
-                    </div>
-
-                    <!-- Custom Document Upload Action -->
-                    <div class="pt-2 border-t border-[var(--color-border)]/70">
-                        <input type="file" id="customDocInput" accept=".pdf,image/png,image/jpeg,image/webp,image/jpg" class="hidden" onchange="uploadCustomDocument(this.files[0])">
-                        <button type="button" onclick="document.getElementById('customDocInput').click()" id="uploadDocBtn" class="btn btn-ghost btn-sm w-full text-xs justify-center py-1.5 font-medium border border-dashed border-[var(--color-border)] hover:border-[var(--color-teal)] hover:bg-[var(--color-teal-soft)] hover:text-[var(--color-teal)] flex items-center gap-1.5 transition-all">
-                            <svg class="w-3.5 h-3.5 text-[var(--color-teal)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                            </svg>
-                            <span>Add Custom PDF / Image</span>
-                        </button>
-                        <div id="uploadStatusLine" class="hidden mt-1.5 text-[10px] text-center text-[var(--color-teal)] flex items-center justify-center gap-1.5 font-medium">
-                            <svg class="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
-                            <span id="uploadStatusText">Scanning & indexing document…</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Card 5: Quick Benchmark Actions -->
-                <div class="space-y-2 pt-1">
-                    <button type="button" onclick="run10TurnDemo()" class="w-full btn btn-secondary btn-sm text-xs justify-center py-2 font-medium">
-                        Run 10-Turn Automated Benchmark
-                    </button>
-                    <button type="button" onclick="askReset()" class="w-full btn btn-ghost btn-sm text-xs justify-center text-[var(--color-text-muted)] hover:text-red-500">
-                        Clear Session Memory
-                    </button>
-                </div>
-
             </div>
 
-            <!-- Footer matching Task 1 -->
-            <div class="p-3 border-t border-black/5 dark:border-white/5 text-[11px] text-[var(--color-text-muted)] text-center">
-                DesiCrew assessment · Task 2
+            <!-- Sidebar Bottom Footer -->
+            <div class="p-3 border-t border-[var(--color-border)] flex flex-col gap-2 bg-[var(--color-surface)]/80">
+                <!-- Knowledge Base Info / Modal trigger -->
+                <button type="button" onclick="openDocsModal()" class="w-full px-2.5 py-1.5 rounded-xl text-left text-xs flex items-center justify-between text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer">
+                    <span class="flex items-center gap-2 truncate">
+                        <svg class="w-4 h-4 text-[var(--color-teal)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                        <span class="truncate">Knowledge Base</span>
+                    </span>
+                    <span class="text-[10px] font-mono text-[var(--color-teal)] bg-[var(--color-teal-soft)] px-1.5 py-0.5 rounded-full shrink-0" id="kbDocCountBadge">3 docs</span>
+                </button>
+
+                <!-- Navigation link & Theme Toggle -->
+                <div class="flex items-center justify-between pt-1 border-t border-[var(--color-border)]/60 text-xs text-[var(--color-text-muted)]">
+                    <a href="/" class="hover:text-[var(--color-text)] flex items-center gap-1.5 transition-colors px-1 py-1 rounded">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                        <span>Suite Home</span>
+                    </a>
+                    {% include 'partials/theme_toggle.html' %}
+                </div>
             </div>
         </aside>
 
-        <!-- Right Main Workspace matching Task 1 -->
-        <div class="flex-1 flex flex-col h-full relative overflow-hidden min-w-0">
+        <!-- Sidebar Backdrop for Mobile -->
+        <div id="sidebarBackdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-30 transition-opacity md:hidden cursor-pointer" style="display: none;"></div>
 
-            <!-- Top Navigation Bar matching Task 1 -->
-            <header class="h-14 glass-bar flex items-center justify-between px-4 sm:px-5 z-10 flex-shrink-0 border-b border-[var(--color-border)]">
-                <div class="flex items-center gap-2.5 min-w-0">
-                    <a href="/" class="text-[var(--color-text-muted)] hover:text-[var(--color-text)] text-sm shrink-0 font-medium transition-colors">Home</a>
-                    <span class="text-black/10 dark:text-white/10">|</span>
-                    <button type="button" onclick="toggleSidebar()" class="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors" aria-label="Toggle sidebar" title="Toggle sidebar">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        <!-- ========================================================================= -->
+        <!-- MAIN WORKSPACE: Minimalist Center Chat View                               -->
+        <!-- ========================================================================= -->
+        <main class="flex-1 flex flex-col h-full relative overflow-hidden min-w-0 bg-[var(--color-bg)]">
+            
+            <!-- Top Header Bar -->
+            <header class="h-14 border-b border-[var(--color-border)] flex items-center justify-between px-4 sm:px-6 z-20 flex-shrink-0 bg-[var(--color-surface)]/70 backdrop-blur-md">
+                <div class="flex items-center gap-3 min-w-0">
+                    <button type="button" onclick="toggleSidebar()" class="p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer" title="Toggle sidebar (Ctrl+B)">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                     </button>
-                    <h1 class="font-semibold text-[var(--color-text)] text-sm truncate">Support Assistant</h1>
+                    <div class="min-w-0">
+                        <h1 id="currentChatTitle" class="font-semibold text-sm text-[var(--color-text)] truncate max-w-xs sm:max-w-md">New chat</h1>
+                    </div>
                 </div>
 
+                <!-- Right Header Actions: 10-Turn Demo & Document Quick Upload -->
                 <div class="flex items-center gap-2 flex-shrink-0">
-                    <span id="headerChunksBadge" class="badge hidden sm:inline-flex text-[11px]">{{ indexed_chunks_count }} chunks</span>
-                    <span id="turnCounterBadge" class="badge font-mono text-[11px]">Turn <span id="currentTurn">0</span>/10</span>
-                    <button type="button" onclick="run10TurnDemo()" id="demoBtn" class="btn btn-secondary btn-sm text-xs">10-Turn Demo</button>
-                    <button type="button" onclick="askReset()" class="btn btn-ghost btn-sm text-xs">Reset</button>
-                    {% include 'partials/theme_toggle.html' %}
+                    <button type="button" onclick="triggerFileUpload()" class="inline-flex items-center gap-1.5 btn btn-ghost btn-sm text-xs py-1.5 px-2.5 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-teal)] text-[var(--color-text-secondary)] hover:text-[var(--color-teal)] cursor-pointer">
+                        <svg class="w-3.5 h-3.5 text-[var(--color-teal)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        <span>Add document</span>
+                    </button>
+
+                    <button type="button" onclick="run10TurnDemo()" id="demoBtn" class="btn btn-secondary btn-sm text-xs py-1.5 px-3 rounded-lg font-medium flex items-center gap-1.5 cursor-pointer" title="Demonstrate multi-turn memory, anti-repetition, and topic switching across 10 turns">
+                        <svg class="w-3.5 h-3.5 text-[var(--color-teal)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>10-Turn Demo</span>
+                    </button>
                 </div>
             </header>
 
-            <!-- Floating Reset Confirmation Modal Banner -->
-            <div id="resetConfirm" class="hidden absolute top-16 inset-x-4 z-30 glass-panel rounded-[var(--radius-lg)] px-4 py-2.5 shadow-lg flex items-center justify-between gap-3 text-xs border border-red-500/20 bg-red-500/5">
-                <span class="text-[var(--color-text)] font-medium">Are you sure you want to reset session memory and clear all turns?</span>
-                <span class="flex gap-2 shrink-0">
-                    <button type="button" onclick="resetSession(true)" class="btn btn-primary btn-sm bg-red-600 hover:bg-red-700 text-xs">Yes, Reset</button>
-                    <button type="button" onclick="cancelReset()" class="btn btn-ghost btn-sm text-xs">Cancel</button>
-                </span>
-            </div>
-
-            <!-- Suggested Questions Upper Panel -->
-            <div class="px-4 py-2.5 shrink-0 border-b border-[var(--color-border)] bg-[var(--color-surface)]/50 backdrop-blur-md flex items-center justify-between gap-3">
-                <div class="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
-                    <div class="flex items-center gap-1.5 text-[var(--color-teal)] shrink-0 select-none font-semibold text-xs pr-1">
-                        <svg class="w-3.5 h-3.5 text-[var(--color-teal)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-                        </svg>
-                        <span class="uppercase tracking-wider text-[11px] text-[var(--color-text-muted)]">Suggested:</span>
+            <!-- Scrollable Center Area (Hero/Empty State OR Chat Messages Stream) -->
+            <div id="centerScrollArea" class="flex-1 overflow-y-auto px-4 sm:px-6 py-6 chat-scroll">
+                
+                <!-- ========================================================================= -->
+                <!-- HERO / EMPTY STATE: Document Intake & Types Understood                    -->
+                <!-- ========================================================================= -->
+                <div id="emptyHeroState" class="max-w-2xl mx-auto my-auto py-6 sm:py-10 flex flex-col items-center text-center">
+                    
+                    <!-- Icon & Welcome Header -->
+                    <div class="w-12 h-12 rounded-2xl avatar-ai flex items-center justify-center text-white mb-4 shadow-md">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                     </div>
 
-                    <!-- Horizontal Scrollable Questions Row -->
-                    <div id="followupRow" class="flex items-center gap-2 overflow-x-auto py-0.5 scrollbar-none flex-1">
-                        <button type="button" onclick="sendPrompt('What is your SLA response time for Critical P1 outages?')" class="suggest-chip text-xs shrink-0 whitespace-nowrap">
-                            <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-teal)] shrink-0"></span>
-                            What is your SLA response time for Critical P1 outages?
+                    <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-[var(--color-text)] mb-2">
+                        Ask your documents
+                    </h2>
+                    <p class="text-xs sm:text-sm text-[var(--color-text-secondary)] max-w-lg mb-6 leading-relaxed">
+                        Upload files or use the knowledge base. Answers cite source + page + section. Remembers 10+ turns.
+                    </p>
+
+                    <!-- Document Upload / Dropzone Box -->
+                    <div id="dropZone" 
+                         ondragover="handleDragOver(event)" 
+                         ondragleave="handleDragLeave(event)" 
+                         ondrop="handleDrop(event)"
+                         onclick="triggerFileUpload()"
+                         class="w-full glass-panel rounded-2xl border-2 border-dashed border-[var(--color-border)] hover:border-[var(--color-teal)] p-6 mb-6 cursor-pointer transition-all duration-200 text-left group">
+                        
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div class="flex items-center gap-3.5">
+                                <div class="w-10 h-10 rounded-xl bg-[var(--color-teal-soft)] text-[var(--color-teal)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-sm font-semibold text-[var(--color-text)] group-hover:text-[var(--color-teal)] transition-colors">
+                                        Drop file or <span class="text-[var(--color-teal)] underline underline-offset-2">browse</span>
+                                    </h3>
+                                    <p class="text-xs text-[var(--color-text-muted)] mt-0.5">
+                                        PDF · DOCX · TXT · images
+                                    </p>
+                                </div>
+                            </div>
+                            <span class="btn btn-secondary btn-sm text-xs pointer-events-none self-end sm:self-center shrink-0">Upload</span>
+                        </div>
+
+                        <!-- Types of Documents Understood List -->
+                        <div class="mt-5 pt-4 border-t border-[var(--color-border)]/70">
+                            <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] block mb-2.5">
+                                Formats
+                            </span>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                                <div class="rounded-xl p-2.5 bg-black/[0.02] dark:bg-white/[0.02] border border-[var(--color-border)]/60 flex items-start gap-2">
+                                    <span class="px-1.5 py-0.5 rounded font-mono font-bold text-[9px] bg-red-500/10 text-red-500 shrink-0">PDF</span>
+                                    <div class="min-w-0">
+                                        <div class="font-medium text-[var(--color-text)] truncate text-[11px]">PDFs (.pdf)</div>
+                                        <div class="text-[10px] text-[var(--color-text-muted)] truncate">Policies & manuals</div>
+                                    </div>
+                                </div>
+                                <div class="rounded-xl p-2.5 bg-black/[0.02] dark:bg-white/[0.02] border border-[var(--color-border)]/60 flex items-start gap-2">
+                                    <span class="px-1.5 py-0.5 rounded font-mono font-bold text-[9px] bg-blue-500/10 text-blue-500 shrink-0">DOCX</span>
+                                    <div class="min-w-0">
+                                        <div class="font-medium text-[var(--color-text)] truncate text-[11px]">Word (.docx)</div>
+                                        <div class="text-[10px] text-[var(--color-text-muted)] truncate">Specs & contracts</div>
+                                    </div>
+                                </div>
+                                <div class="rounded-xl p-2.5 bg-black/[0.02] dark:bg-white/[0.02] border border-[var(--color-border)]/60 flex items-start gap-2">
+                                    <span class="px-1.5 py-0.5 rounded font-mono font-bold text-[9px] bg-amber-500/10 text-amber-500 shrink-0">TXT</span>
+                                    <div class="min-w-0">
+                                        <div class="font-medium text-[var(--color-text)] truncate text-[11px]">Text (.txt, .md)</div>
+                                        <div class="text-[10px] text-[var(--color-text-muted)] truncate">Markdown & notes</div>
+                                    </div>
+                                </div>
+                                <div class="rounded-xl p-2.5 bg-black/[0.02] dark:bg-white/[0.02] border border-[var(--color-border)]/60 flex items-start gap-2">
+                                    <span class="px-1.5 py-0.5 rounded font-mono font-bold text-[9px] bg-emerald-500/10 text-emerald-500 shrink-0">IMG</span>
+                                    <div class="min-w-0">
+                                        <div class="font-medium text-[var(--color-text)] truncate text-[11px]">Images (.png, .jpg)</div>
+                                        <div class="text-[10px] text-[var(--color-text-muted)] truncate">Forms & OCR scans</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Preloaded Knowledge Base Ready Bar -->
+                    <div class="w-full flex items-center justify-between text-xs text-[var(--color-text-secondary)] px-1 mb-6">
+                        <span class="flex items-center gap-1.5 font-medium">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                            <span>Knowledge base ready</span>
+                        </span>
+                        <button type="button" onclick="openDocsModal()" class="text-[var(--color-teal)] hover:underline font-medium text-xs cursor-pointer">
+                            View docs →
                         </button>
-                        <button type="button" onclick="sendPrompt('Can I get a refund if I cancel my annual subscription?')" class="suggest-chip text-xs shrink-0 whitespace-nowrap">
-                            <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-teal)] shrink-0"></span>
-                            Can I get a refund if I cancel my annual subscription?
-                        </button>
-                        <button type="button" onclick="sendPrompt('Could you remind me of the refund terms for annual plans?')" class="suggest-chip text-xs shrink-0 whitespace-nowrap">
-                            <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-teal)] shrink-0"></span>
-                            Could you remind me of the refund terms for annual plans?
-                        </button>
-                        <button type="button" onclick="sendPrompt('Is multi-factor authentication mandatory for admin accounts?')" class="suggest-chip text-xs shrink-0 whitespace-nowrap">
-                            <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-teal)] shrink-0"></span>
-                            Is multi-factor authentication mandatory for admin accounts?
-                        </button>
-                        <button type="button" onclick="sendPrompt('Does warranty cover physical drop damage or liquid spills?')" class="suggest-chip text-xs shrink-0 whitespace-nowrap">
-                            <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-teal)] shrink-0"></span>
-                            Does warranty cover physical drop damage or liquid spills?
-                        </button>
+                    </div>
+
+                    <!-- Suggested Starter Questions (Click to start chat) -->
+                    <div class="w-full text-left">
+                        <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] block mb-2 px-1">
+                            Try:
+                        </span>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <button type="button" onclick="sendPrompt('What is your SLA response time for Critical P1 outages?')" class="prompt-card text-left p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface)]/80 text-xs">
+                                <span class="font-medium text-[var(--color-text)] block">What is your SLA response time for Critical P1 outages?</span>
+                                <span class="text-[10px] text-[var(--color-text-muted)] mt-1 block">Customer Support Policy · Response Windows</span>
+                            </button>
+                            <button type="button" onclick="sendPrompt('Can I get a refund if I cancel my annual subscription?')" class="prompt-card text-left p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface)]/80 text-xs">
+                                <span class="font-medium text-[var(--color-text)] block">Can I get a refund if I cancel my annual subscription?</span>
+                                <span class="text-[10px] text-[var(--color-text-muted)] mt-1 block">Billing Guide · 30-day refund grace period</span>
+                            </button>
+                            <button type="button" onclick="sendPrompt('Is multi-factor authentication mandatory for admin accounts?')" class="prompt-card text-left p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface)]/80 text-xs">
+                                <span class="font-medium text-[var(--color-text)] block">Is multi-factor authentication mandatory for admin accounts?</span>
+                                <span class="text-[10px] text-[var(--color-text-muted)] mt-1 block">Account Security · Mandatory MFA enforcement</span>
+                            </button>
+                            <button type="button" onclick="sendPrompt('Does warranty cover physical drop damage or liquid spills?')" class="prompt-card text-left p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface)]/80 text-xs">
+                                <span class="font-medium text-[var(--color-text)] block">Does warranty cover physical drop damage or liquid spills?</span>
+                                <span class="text-[10px] text-[var(--color-text-muted)] mt-1 block">Hardware Warranty · Exclusions & accidental damage</span>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- ========================================================================= -->
+                <!-- ACTIVE CHAT CONVERSATION STREAM                                           -->
+                <!-- ========================================================================= -->
+                <div id="messagesContainer" class="hidden max-w-3xl mx-auto space-y-6">
+                    <!-- Dynamic chat bubbles rendered via JS -->
+                </div>
+
+                <!-- Thinking / Loading Indicator -->
+                <div id="loadingIndicator" class="hidden max-w-3xl mx-auto my-4 flex items-center gap-2.5 text-xs font-medium text-[var(--color-teal)] pl-1">
+                    <div class="w-6 h-6 rounded-lg avatar-ai flex items-center justify-center text-white text-[9px] font-bold">AI</div>
+                    <div class="flex items-center gap-1.5 bg-[var(--color-surface)] px-3 py-1.5 rounded-full border border-[var(--color-border)] shadow-sm">
+                        <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-teal)] animate-ping"></span>
+                        <span id="loadingText">Searching docs…</span>
                     </div>
                 </div>
+
             </div>
 
-            <!-- Chat Messages Scroll Container -->
-            <div id="chatMessages" class="flex-1 p-4 overflow-y-auto space-y-4 min-h-0 max-w-4xl mx-auto w-full">
-                <!-- Welcome Assistant Message -->
-                <div class="flex items-start gap-3 welcome-msg">
-                    <div class="w-8 h-8 rounded-full avatar-ai flex items-center justify-center text-[10px] font-bold shrink-0">AI</div>
-                    <div class="msg-assistant rounded-[var(--radius-lg)] rounded-tl-md p-4 text-sm max-w-[90%] shadow-sm">
-                        <div class="flex items-center gap-2 mb-1">
-                            <p class="font-semibold text-[var(--color-text)]">Policy-Aware Multi-Turn Support Assistant</p>
-                            <span class="badge text-[10px] font-mono">10-Turn Context</span>
-                        </div>
-                        <p class="text-[var(--color-text-secondary)] mt-1 text-xs sm:text-sm leading-relaxed">
-                            I am grounded in our enterprise policy documents. I maintain context across multi-turn conversations, avoid repeating already answered boilerplate, handle topic shifts gracefully, and provide section-level citations for every factual claim.
-                        </p>
-                        <div class="mt-3 pt-2.5 border-t border-[var(--color-border)] flex flex-wrap gap-2 text-xs text-[var(--color-text-muted)]">
-                            <span>Try clicking <strong>10-Turn Demo</strong> above or select any query chips to begin!</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <!-- ========================================================================= -->
+            <!-- BOTTOM FLOATING COMPOSER INPUT                                            -->
+            <!-- ========================================================================= -->
+            <div class="p-3 sm:p-4 shrink-0 max-w-3xl mx-auto w-full z-20">
+                <form id="chatForm" onsubmit="handleChatSubmit(event)" class="glass-panel rounded-2xl sm:rounded-3xl p-1.5 sm:p-2 flex items-end gap-2 border border-[var(--color-border)] shadow-lg focus-within:border-[var(--color-teal)] transition-colors">
+                    
+                    <!-- Document Attachment Button -->
+                    <button type="button" onclick="triggerFileUpload()" title="Upload or attach document (.pdf, .docx, .txt, image)" class="p-2 sm:p-2.5 text-[var(--color-text-muted)] hover:text-[var(--color-teal)] hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors shrink-0 cursor-pointer" aria-label="Attach document">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                    </button>
 
-            <!-- Loading Spinner Indicator -->
-            <div id="loadingIndicator" class="hidden px-4 py-1.5 max-w-4xl mx-auto w-full flex items-center gap-2 text-[var(--color-teal)] text-xs font-medium">
-                <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
-                <span id="loadingText">Retrieving policies and synthesizing response…</span>
-            </div>
-
-            <!-- Chat Input Footer -->
-            <div class="p-3 sm:p-4 shrink-0 max-w-4xl mx-auto w-full">
-                <form id="chatForm" onsubmit="handleSubmit(event)" class="glass-panel rounded-[var(--radius-xl)] p-2 flex items-center gap-2 border border-[var(--color-border)] shadow-md">
+                    <!-- Auto-expanding Textarea -->
                     <textarea
                         id="messageInput"
                         rows="1"
-                        placeholder="Ask about SLAs, refunds, warranty, billing, or security…"
-                        class="flex-1 bg-transparent px-3 py-2 text-sm outline-none text-[var(--color-text)] placeholder-[var(--color-text-muted)] resize-none max-h-32"
+                        placeholder="Ask about your documents…"
+                        class="flex-1 bg-transparent px-2 py-2 text-sm outline-none text-[var(--color-text)] placeholder-[var(--color-text-muted)] resize-none max-h-36 font-normal leading-relaxed"
+                        onkeydown="handleTextareaKeyDown(event)"
+                        oninput="autoResizeTextarea(this)"
                     ></textarea>
-                    <button type="button" id="stopBtn" onclick="stopRequest()" class="hidden btn btn-stop btn-sm shrink-0 text-xs">Stop</button>
-                    <button type="submit" id="sendBtn" class="btn btn-primary btn-sm shrink-0 text-xs font-semibold px-4">Send</button>
+
+                    <!-- Single Start / Stop Action Button -->
+                    <button type="submit" id="sendBtn" class="btn btn-primary btn-sm p-2 sm:p-2.5 rounded-xl shrink-0 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" aria-label="Send message" title="Send message">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </button>
                 </form>
+
+                <div class="mt-1.5 flex items-center justify-between px-2 text-[10px] text-[var(--color-text-muted)]">
+                    <span>Doc-grounded · session memory</span>
+                    <span class="hidden sm:inline">Enter · send</span>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Hidden Native File Input -->
+    <input type="file" id="globalFileInput" accept=".pdf,.docx,.txt,.md,image/png,image/jpeg,image/webp" class="hidden" onchange="handleFileSelected(this.files[0])">
+
+    <!-- Global Floating Upload Toast -->
+    <div id="uploadToast" class="fixed top-5 right-5 z-50 glass-panel rounded-2xl p-3 border border-[var(--color-border)] shadow-xl flex items-center gap-3 text-xs transition-all duration-300 transform translate-y-[-100px] opacity-0 pointer-events-none">
+        <div id="uploadToastSpinner" class="w-4 h-4 text-[var(--color-teal)] shrink-0">
+            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+        </div>
+        <div id="uploadToastCheck" class="hidden w-4 h-4 text-emerald-500 shrink-0">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+        </div>
+        <span id="uploadToastText" class="font-medium text-[var(--color-text)]">Indexing document…</span>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- KNOWLEDGE BASE MODAL (View preloaded and custom uploaded files)           -->
+    <!-- ========================================================================= -->
+    <div id="docsModal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm items-center justify-center p-4" style="display: none;">
+        <div class="glass-panel modal-panel rounded-2xl max-w-lg w-full flex flex-col overflow-hidden max-h-[85vh] shadow-2xl border border-[var(--color-border)]">
+            <div class="p-4 border-b border-[var(--color-border)] flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-[var(--color-teal)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                    <h3 class="font-semibold text-sm text-[var(--color-text)]">Active Knowledge Base Documents</h3>
+                </div>
+                <button type="button" onclick="closeDocsModal()" class="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-lg hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="p-4 overflow-y-auto space-y-4 text-xs chat-scroll">
+                <div>
+                    <h4 class="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-2">Preloaded Baseline Policies</h4>
+                    <div class="space-y-1.5">
+                        <div class="flex items-center justify-between p-2 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-[var(--color-border)]">
+                            <div class="flex items-center gap-2 truncate">
+                                <span class="px-1.5 py-0.5 rounded font-mono font-bold text-[9px] bg-red-500/10 text-red-500 shrink-0">PDF</span>
+                                <span class="font-medium text-[var(--color-text)] truncate">Customer_Support_Policy.pdf</span>
+                            </div>
+                            <span class="text-[10px] text-[var(--color-text-muted)] font-mono shrink-0">SLAs · P1-P3</span>
+                        </div>
+                        <div class="flex items-center justify-between p-2 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-[var(--color-border)]">
+                            <div class="flex items-center gap-2 truncate">
+                                <span class="px-1.5 py-0.5 rounded font-mono font-bold text-[9px] bg-red-500/10 text-red-500 shrink-0">PDF</span>
+                                <span class="font-medium text-[var(--color-text)] truncate">Subscription_Billing_Guide.pdf</span>
+                            </div>
+                            <span class="text-[10px] text-[var(--color-text-muted)] font-mono shrink-0">Refunds · Plans</span>
+                        </div>
+                        <div class="flex items-center justify-between p-2 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-[var(--color-border)]">
+                            <div class="flex items-center gap-2 truncate">
+                                <span class="px-1.5 py-0.5 rounded font-mono font-bold text-[9px] bg-red-500/10 text-red-500 shrink-0">PDF</span>
+                                <span class="font-medium text-[var(--color-text)] truncate">Account_Security_Privacy.pdf</span>
+                            </div>
+                            <span class="text-[10px] text-[var(--color-text-muted)] font-mono shrink-0">MFA · Passwords</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Custom Uploaded Documents</h4>
+                        <button type="button" onclick="triggerFileUpload()" class="text-[10px] text-[var(--color-teal)] font-medium hover:underline cursor-pointer">+ Upload New</button>
+                    </div>
+                    
+                    <div id="modalUploadsList" class="space-y-1.5">
+                        {% if uploaded_files %}
+                            {% for uf in uploaded_files %}
+                            <div class="flex items-center justify-between p-2 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-[var(--color-border)] group" data-file="{{ uf.name }}">
+                                <div class="flex items-center gap-2 truncate min-w-0">
+                                    <span class="px-1.5 py-0.5 rounded font-mono font-bold text-[9px] {% if uf.type == 'PDF' %}bg-red-500/10 text-red-500{% elif uf.type == 'DOCX' %}bg-blue-500/10 text-blue-500{% elif uf.type == 'TXT' %}bg-amber-500/10 text-amber-500{% else %}bg-emerald-500/10 text-emerald-500{% endif %} shrink-0">{{ uf.type|default:"DOC" }}</span>
+                                    <span class="font-medium text-[var(--color-text)] truncate">{{ uf.name }}</span>
+                                </div>
+                                <button type="button" onclick="deleteUploadedDocument('{{ uf.name }}', this)" title="Remove {{ uf.name }}" class="text-[var(--color-text-muted)] hover:text-red-500 p-1 rounded transition-colors shrink-0 cursor-pointer" aria-label="Delete {{ uf.name }}">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                </button>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-[11px] text-[var(--color-text-muted)] italic p-2 rounded-xl bg-black/[0.01] border border-dashed border-[var(--color-border)]">No custom documents uploaded yet. You can upload any PDF, Word, or Image file.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-3 border-t border-[var(--color-border)] bg-[var(--color-surface)] flex justify-end">
+                <button type="button" onclick="closeDocsModal()" class="btn btn-secondary btn-sm text-xs px-4 py-1.5 rounded-xl cursor-pointer">Close</button>
             </div>
         </div>
     </div>
 
-    <!-- JavaScript Controller -->
+    <!-- ========================================================================= -->
+    <!-- CLIENT APPLICATION LOGIC                                                  -->
+    <!-- ========================================================================= -->
     <script>
-        const chatMessages = document.getElementById('chatMessages');
-        const messageInput = document.getElementById('messageInput');
-        const loadingIndicator = document.getElementById('loadingIndicator');
-        const sendBtn = document.getElementById('sendBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const currentTurnSpan = document.getElementById('currentTurn');
-        const demoBtn = document.getElementById('demoBtn');
-        const followupRow = document.getElementById('followupRow');
-        
-        // Sidebar Inspector Elements
-        const sidebar = document.getElementById('sidebar');
-        const sidebarActiveTopic = document.getElementById('sidebarActiveTopic');
-        const sidebarTopicDesc = document.getElementById('sidebarTopicDesc');
-        const topicSwitchBadge = document.getElementById('topicSwitchBadge');
-        const antiRepeatStatus = document.getElementById('antiRepeatStatus');
-        const sidebarTurnText = document.getElementById('sidebarTurnText');
-        const sidebarProgressBar = document.getElementById('sidebarProgressBar');
-        const sidebarMemoryDetail = document.getElementById('sidebarMemoryDetail');
-        const sidebarTopicList = document.getElementById('sidebarTopicList');
-        const topicTrailCount = document.getElementById('topicTrailCount');
-
-        let chatAbortController = null;
+        // -------------------------------------------------------------------------
+        // State & Chat Storage Engine (ChatGPT-style multi-chat with localStorage)
+        // -------------------------------------------------------------------------
+        const STORAGE_KEY = 'task2_chat_sessions';
+        let chats = [];
+        let activeChatId = null;
+        let isGenerating = false;
+        let abortController = null;
         let demoRunning = false;
-        let demoCancelled = false;
-        let recordedTopics = [];
 
-        const welcomeHtml = chatMessages.innerHTML;
+        // DOM elements
+        const sidebar = document.getElementById('sidebar');
+        const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+        const chatsList = document.getElementById('chatsList');
+        const chatCountBadge = document.getElementById('chatCountBadge');
+        const currentChatTitle = document.getElementById('currentChatTitle');
+        const emptyHeroState = document.getElementById('emptyHeroState');
+        const messagesContainer = document.getElementById('messagesContainer');
+        const centerScrollArea = document.getElementById('centerScrollArea');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const loadingText = document.getElementById('loadingText');
+        const demoBtn = document.getElementById('demoBtn');
+        const docsModal = document.getElementById('docsModal');
+        const globalFileInput = document.getElementById('globalFileInput');
+        const dropZone = document.getElementById('dropZone');
+        const uploadToast = document.getElementById('uploadToast');
+        const uploadToastSpinner = document.getElementById('uploadToastSpinner');
+        const uploadToastCheck = document.getElementById('uploadToastCheck');
+        const uploadToastText = document.getElementById('uploadToastText');
 
-        // Sidebar Toggle matching Task 1 implementation
-        function toggleSidebar() {
-            if (window.innerWidth <= 768) {
-                sidebar.classList.toggle('sidebar-hidden');
-            } else {
-                sidebar.classList.toggle('-ml-80');
-            }
-        }
-
-        // Keyboard Shortcut: Ctrl + B or Cmd + B to toggle sidebar
-        window.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
-                e.preventDefault();
-                toggleSidebar();
-            }
-        });
-
-        function setChatBusy(busy) {
-            messageInput.disabled = busy;
-            sendBtn.disabled = busy;
-            sendBtn.classList.toggle('hidden', busy);
-            stopBtn.classList.toggle('hidden', !busy);
-            loadingIndicator.classList.toggle('hidden', !busy);
-        }
-
-        function stopRequest() {
-            demoCancelled = true;
-            demoRunning = false;
-            demoBtn.disabled = false;
-            demoBtn.textContent = '10-Turn Demo';
-            if (chatAbortController) {
-                try { chatAbortController.abort(); } catch(e) {}
-                chatAbortController = null;
-            }
-            setChatBusy(false);
-        }
-
-        function isAbortError(err) {
-            return err && (err.name === 'AbortError' || err.message === 'The user aborted a request.');
-        }
-
+        // Benchmark sequence (10 turns)
         const BENCHMARK_TURNS = [
             "What is your SLA response time for Critical P1 outages?",
             "What about Standard P3 severity issues?",
@@ -470,215 +525,566 @@
             "How long before a missing package is officially declared Lost in Transit?"
         ];
 
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
+        // -------------------------------------------------------------------------
+        // Initialization
+        // -------------------------------------------------------------------------
+        function initApp() {
+            loadChatsFromStorage();
+            if (chats.length === 0) {
+                createNewChat(false);
+            } else {
+                selectChat(chats[0].id);
             }
-            return cookieValue;
+            renderChatsList();
+
+            // Keyboard shortcuts
+            window.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+                    e.preventDefault();
+                    toggleSidebar();
+                }
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                    e.preventDefault();
+                    createNewChat();
+                }
+            });
+        }
+
+        function loadChatsFromStorage() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    chats = JSON.parse(stored);
+                }
+            } catch (e) {
+                console.warn("Failed loading chats from localStorage:", e);
+                chats = [];
+            }
+        }
+
+        function saveChatsToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
+            } catch (e) {
+                console.warn("Failed saving chats to localStorage:", e);
+            }
+            renderChatsList();
+        }
+
+        // -------------------------------------------------------------------------
+        // Multi-Chat Operations (ChatGPT style)
+        // -------------------------------------------------------------------------
+        function createNewChat(triggerFocus = true) {
+            const newChatId = 'chat_' + Date.now();
+            const newChat = {
+                id: newChatId,
+                title: 'New chat',
+                createdAt: Date.now(),
+                messages: []
+            };
+            chats.unshift(newChat);
+            activeChatId = newChatId;
+            saveChatsToStorage();
+            selectChat(newChatId);
+
+            if (triggerFocus) {
+                setTimeout(() => messageInput.focus(), 50);
+            }
+            if (window.innerWidth < 768) {
+                closeSidebar();
+            }
+        }
+
+        function selectChat(chatId) {
+            activeChatId = chatId;
+            const chat = chats.find(c => c.id === chatId);
+            if (!chat) return;
+
+            currentChatTitle.textContent = chat.title || 'New chat';
+            renderMessages();
+            renderChatsList();
+        }
+
+        function deleteChat(chatId, event) {
+            if (event) event.stopPropagation();
+            chats = chats.filter(c => c.id !== chatId);
+            
+            // Backend session cleanup
+            fetch('/task2/api/reset/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chatId })
+            }).catch(() => {});
+
+            if (chats.length === 0) {
+                createNewChat(false);
+            } else if (activeChatId === chatId) {
+                selectChat(chats[0].id);
+            } else {
+                saveChatsToStorage();
+            }
+        }
+
+        function renderChatsList() {
+            chatsList.innerHTML = '';
+            chatCountBadge.textContent = chats.length;
+
+            chats.forEach(chat => {
+                const isActive = chat.id === activeChatId;
+                const btn = document.createElement('div');
+                btn.className = `group flex items-center justify-between px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-colors ${
+                    isActive 
+                        ? 'chat-item-active' 
+                        : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-black/5 dark:hover:bg-white/5'
+                }`;
+                btn.onclick = () => selectChat(chat.id);
+
+                btn.innerHTML = `
+                    <div class="flex items-center gap-2 truncate min-w-0 pr-1">
+                        <svg class="w-3.5 h-3.5 shrink-0 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                        <span class="truncate font-medium">${escapeHtml(chat.title || 'New chat')}</span>
+                    </div>
+                    <button type="button" onclick="deleteChat('${chat.id}', event)" class="opacity-0 group-hover:opacity-100 hover:text-red-500 p-1 rounded transition-opacity shrink-0 cursor-pointer" title="Delete conversation" aria-label="Delete chat">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>
+                `;
+                chatsList.appendChild(btn);
+            });
+        }
+
+        // -------------------------------------------------------------------------
+        // Messages Rendering
+        // -------------------------------------------------------------------------
+        function getActiveChat() {
+            return chats.find(c => c.id === activeChatId);
+        }
+
+        function renderMessages() {
+            const chat = getActiveChat();
+            if (!chat || chat.messages.length === 0) {
+                emptyHeroState.classList.remove('hidden');
+                messagesContainer.classList.add('hidden');
+                messagesContainer.innerHTML = '';
+                return;
+            }
+
+            emptyHeroState.classList.add('hidden');
+            messagesContainer.classList.remove('hidden');
+            messagesContainer.innerHTML = '';
+
+            chat.messages.forEach(msg => {
+                appendMessageToDOM(msg, false);
+            });
+
+            scrollToBottom();
+        }
+
+        function appendMessageToDOM(msg, shouldScroll = true) {
+            const isUser = msg.role === 'user';
+            const msgEl = document.createElement('div');
+            msgEl.className = `flex gap-3 sm:gap-4 ${isUser ? 'justify-end' : 'justify-start'}`;
+
+            if (isUser) {
+                msgEl.innerHTML = `
+                    <div class="max-w-[85%] sm:max-w-[78%] rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm bg-[var(--color-teal)] text-white shadow-sm leading-relaxed">
+                        ${escapeHtml(msg.text)}
+                    </div>
+                `;
+            } else {
+                let parsedMarkdown = '';
+                try {
+                    parsedMarkdown = marked.parse(msg.text || '');
+                } catch (e) {
+                    parsedMarkdown = escapeHtml(msg.text || '');
+                }
+
+                // Citations Pill & Sources accordion if available
+                let citationsBlock = '';
+                if (msg.citation || (msg.citations && msg.citations.length > 0)) {
+                    const citText = msg.citation || msg.citations[0];
+                    citationsBlock = `
+                        <div class="mt-3 pt-2.5 border-t border-[var(--color-border)]/60 flex flex-wrap items-center gap-2">
+                            <span class="citation-badge">
+                                <svg class="w-3 h-3 text-[var(--color-teal)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                <span>${escapeHtml(citText)}</span>
+                            </span>
+                            ${msg.sources && msg.sources.length > 0 ? `
+                                <details class="text-[11px] text-[var(--color-text-muted)] cursor-pointer">
+                                    <summary class="hover:text-[var(--color-teal)] transition-colors select-none">View source excerpts (${msg.sources.length})</summary>
+                                    <div class="mt-1.5 p-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-[var(--color-border)] text-xs space-y-1 font-mono">
+                                        ${msg.sources.map(s => `<p class="text-[11px] leading-relaxed text-[var(--color-text-secondary)]">• ${escapeHtml(s.excerpt)}</p>`).join('')}
+                                    </div>
+                                </details>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+
+                msgEl.innerHTML = `
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl avatar-ai flex items-center justify-center text-white text-[10px] sm:text-xs font-bold shrink-0 mt-0.5 shadow-sm">AI</div>
+                    <div class="flex-1 max-w-[88%] sm:max-w-[85%] rounded-2xl rounded-tl-sm p-4 text-sm glass-panel border border-[var(--color-border)] shadow-sm">
+                        <div class="prose-chat">${parsedMarkdown}</div>
+                        ${citationsBlock}
+                    </div>
+                `;
+            }
+
+            messagesContainer.appendChild(msgEl);
+            if (shouldScroll) scrollToBottom();
         }
 
         function scrollToBottom() {
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        function appendUserMessage(text) {
-            const div = document.createElement('div');
-            div.className = 'flex items-start justify-end gap-3';
-            div.innerHTML = `
-                <div class="msg-user rounded-[var(--radius-lg)] rounded-tr-md p-3.5 max-w-[85%] text-sm shadow-sm">${escapeHtml(text)}</div>
-                <div class="w-8 h-8 rounded-full avatar-user flex items-center justify-center text-[10px] font-semibold shrink-0 mt-0.5">You</div>
-            `;
-            chatMessages.appendChild(div);
-            scrollToBottom();
-        }
-
-        function highlightCitations(text) {
-            const citationRegex = /\[Doc:\s*([^,\]]+),\s*Page:\s*([^,\]]+)(?:,\s*Section:\s*([^\]]+))?\]/gi;
-            return text.replace(citationRegex, function(match, doc, page, sec) {
-                const secPart = sec ? `, Section: ${sec.trim()}` : '';
-                return `<span class="citation-highlight">Doc: ${doc.trim()}, p.${page.trim()}${secPart}</span>`;
+            centerScrollArea.scrollTo({
+                top: centerScrollArea.scrollHeight,
+                behavior: 'smooth'
             });
         }
 
-        function updateInspectorPanel(data) {
-            const turn = data.turn_number || (data.total_turns || 0);
-            if (currentTurnSpan) currentTurnSpan.textContent = turn;
-            if (sidebarTurnText) sidebarTurnText.textContent = `Turn ${turn} of 10`;
-            
-            // Progress Bar
-            const percent = Math.min(100, Math.round((turn / 10) * 100));
-            if (sidebarProgressBar) sidebarProgressBar.style.width = `${percent}%`;
+        // -------------------------------------------------------------------------
+        // Chat Submission & API Communication
+        // -------------------------------------------------------------------------
+        async function sendPrompt(text) {
+            if (!text || !text.trim() || isGenerating) return;
+            const query = text.trim();
 
-            // Active Topic
-            if (data.topic && sidebarActiveTopic) {
-                sidebarActiveTopic.textContent = data.topic;
+            const chat = getActiveChat();
+            if (!chat) return;
+
+            // Auto-title on first turn
+            if (chat.messages.length === 0) {
+                chat.title = query.length > 36 ? query.slice(0, 34) + '…' : query;
+                currentChatTitle.textContent = chat.title;
+                emptyHeroState.classList.add('hidden');
+                messagesContainer.classList.remove('hidden');
             }
 
-            // Topic Switch & Description
-            if (data.is_topic_switch) {
-                if (topicSwitchBadge) {
-                    topicSwitchBadge.classList.remove('hidden');
-                    topicSwitchBadge.textContent = data.returning_to_previous_topic ? 'Returning' : 'Switched';
-                }
-                if (sidebarTopicDesc) {
-                    sidebarTopicDesc.textContent = data.returning_to_previous_topic
-                        ? `Returned from ${data.previous_topic || 'previous'} to ${data.topic}.`
-                        : `Gracefully switched focus from ${data.previous_topic || 'prior topic'} to ${data.topic}.`;
-                }
-            } else {
-                if (topicSwitchBadge) topicSwitchBadge.classList.add('hidden');
-                if (sidebarTopicDesc && data.topic) {
-                    sidebarTopicDesc.textContent = `Maintaining conversational continuity in "${data.topic}".`;
-                }
-            }
+            // Append user message
+            const userMsg = {
+                id: 'msg_' + Date.now(),
+                role: 'user',
+                text: query,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            chat.messages.push(userMsg);
+            saveChatsToStorage();
+            appendMessageToDOM(userMsg);
 
-            // Anti-Repetition Status
-            if (antiRepeatStatus) {
-                if (data.anti_repeat) {
-                    antiRepeatStatus.textContent = 'Active (Delta facts)';
-                    antiRepeatStatus.className = 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20';
+            // Clear input & reset textarea
+            messageInput.value = '';
+            autoResizeTextarea(messageInput);
+
+            // Set UI Busy state
+            setGenerating(true);
+            abortController = new AbortController();
+
+            try {
+                const response = await fetch('/task2/api/support_chat/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: query,
+                        chat_id: activeChatId
+                    }),
+                    signal: abortController.signal
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server returned HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                const asstMsg = {
+                    id: 'msg_' + Date.now(),
+                    role: 'assistant',
+                    text: data.reply || "I couldn't find a direct answer in the provided documents.",
+                    citation: data.citation || '',
+                    citations: data.citations || [],
+                    sources: data.sources || [],
+                    topic: data.topic || 'General Support',
+                    is_topic_switch: data.is_topic_switch || false,
+                    anti_repeat: data.anti_repeat || false,
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                };
+
+                chat.messages.push(asstMsg);
+                saveChatsToStorage();
+                appendMessageToDOM(asstMsg);
+
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    console.log("Request cancelled by user.");
                 } else {
-                    antiRepeatStatus.textContent = 'Monitoring';
-                    antiRepeatStatus.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-[var(--color-text-muted)]';
+                    const errorMsg = {
+                        id: 'msg_' + Date.now(),
+                        role: 'assistant',
+                        text: `⚠️ **Unable to complete query**: ${err.message}. Please check your connection or try again.`,
+                        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    };
+                    chat.messages.push(errorMsg);
+                    saveChatsToStorage();
+                    appendMessageToDOM(errorMsg);
                 }
-            }
-
-            // Memory Details
-            if (sidebarMemoryDetail) {
-                const bits = [];
-                if (data.anti_repeat) bits.push('Boilerplate suppressed; delivering only delta details.');
-                if (Array.isArray(data.topics) && data.topics.length > 0) {
-                    bits.push(`${data.topics.length} topic domains catalogued in active session.`);
-                }
-                sidebarMemoryDetail.textContent = bits.length ? bits.join(' ') : 'Retaining continuous 10-turn multi-topic session memory.';
-            }
-
-            // Topic Timeline Trail
-            if (Array.isArray(data.topics) && data.topics.length > 0) {
-                recordedTopics = data.topics;
-                if (topicTrailCount) topicTrailCount.textContent = `${recordedTopics.length} explored`;
-                if (sidebarTopicList) {
-                    sidebarTopicList.innerHTML = recordedTopics.map((t, idx) => {
-                        const isCurrent = (t === data.topic);
-                        return `
-                            <li class="flex items-center justify-between p-1.5 rounded-md ${isCurrent ? 'bg-[var(--color-teal-soft)] font-semibold text-[var(--color-teal)]' : 'text-[var(--color-text-secondary)]'}">
-                                <span class="truncate flex items-center gap-1.5">
-                                    <span class="w-1.5 h-1.5 rounded-full ${isCurrent ? 'bg-[var(--color-teal)]' : 'bg-gray-300 dark:bg-gray-600'}"></span>
-                                    <span class="truncate">${escapeHtml(t)}</span>
-                                </span>
-                                ${isCurrent ? '<span class="text-[9px] uppercase tracking-wider font-bold">Now</span>' : ''}
-                            </li>
-                        `;
-                    }).join('');
-                }
+            } finally {
+                setGenerating(false);
+                abortController = null;
             }
         }
 
-        function followUpsFor(topic) {
-            const t = (topic || '').toLowerCase();
-            if (t.includes('sla') || t.includes('outage') || t.includes('severity')) {
-                return ['What about Standard P3 severity issues?', 'What is your SLA response time for Critical P1 outages?'];
+        const SEND_ICON_HTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M5 12h14M12 5l7 7-7 7"/></svg>';
+        const STOP_ICON_HTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+
+        function handleChatSubmit(e) {
+            e.preventDefault();
+            if (isGenerating || demoRunning || abortController) {
+                stopCurrentOperation();
+                return;
             }
-            if (t.includes('refund') || t.includes('billing') || t.includes('subscription')) {
-                return ['How many days does a refund take to arrive?', 'Could you remind me of the refund terms for annual plans?'];
-            }
-            if (t.includes('security') || t.includes('mfa') || t.includes('auth')) {
-                return ['What is the protocol if an administrator loses both password and 2FA recovery codes?'];
-            }
-            if (t.includes('warrant')) {
-                return ['Does warranty cover physical drop damage or liquid spills?'];
-            }
-            if (t.includes('shipment') || t.includes('lost')) {
-                return ['How long before a missing package is officially declared Lost in Transit?'];
-            }
-            return ['What is your SLA response time for Critical P1 outages?', 'Can I get a refund if I cancel my annual subscription?'];
+            const text = messageInput.value;
+            sendPrompt(text);
         }
 
-        function renderFollowUps(topic) {
-            if (!followupRow) return;
-            followupRow.innerHTML = followUpsFor(topic).map((q) =>
-                `<button type="button" class="suggest-chip text-xs shrink-0 whitespace-nowrap" data-q="${escapeHtml(q)}">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-teal)] shrink-0"></span>
-                    <span>${escapeHtml(q)}</span>
-                </button>`
-            ).join('');
-            followupRow.querySelectorAll('[data-q]').forEach((btn) => {
-                btn.addEventListener('click', () => sendPrompt(btn.getAttribute('data-q')));
-            });
+        function handleTextareaKeyDown(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleChatSubmit(e);
+            }
         }
 
-        function appendAssistantResponse(data, retryText) {
-            const div = document.createElement('div');
-            div.className = 'flex items-start gap-3';
-
-            updateInspectorPanel(data);
-            if (data.topic) renderFollowUps(data.topic);
-
-            let metaBanner = '';
-            if (data.is_topic_switch) {
-                const switchTitle = data.returning_to_previous_topic
-                    ? `Returning to: <strong>${escapeHtml(data.topic)}</strong>`
-                    : `Topic Transition: <strong>${escapeHtml(data.topic)}</strong>`;
-                metaBanner = `<p class="text-xs text-[var(--color-teal)] mb-2 font-medium flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-[var(--color-teal)]"></span>${switchTitle}</p>`;
+        function autoResizeTextarea(el) {
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+            if (!isGenerating && !demoRunning) {
+                sendBtn.disabled = !el.value.trim();
             }
+        }
 
-            let citationBox = '';
-            const sources = data.sources || [];
-            if (sources.length) {
-                citationBox = `<div class="mt-3 pt-2.5 border-t border-[var(--color-border)] space-y-2">${sources.map((s) => {
-                    let cleanText = (s.excerpt || '').replace(/^#{1,6}\s*/gm, '');
-                    let parsedContent = marked.parse(cleanText);
-                    return `
-                    <details class="text-xs group rounded-lg p-2.5 bg-black/[0.02] dark:bg-white/[0.03] border border-[var(--color-border)] transition-all">
-                        <summary class="cursor-pointer font-mono text-[var(--color-teal)] font-medium flex items-center gap-1.5 select-none hover:underline">
-                            <span class="text-[10px] text-[var(--color-text-muted)] transition-transform group-open:rotate-90 inline-block">▶</span>
-                            <span>${escapeHtml(s.citation || 'Official Citation')}</span>
-                        </summary>
-                        <div class="prose max-w-none mt-2 text-[var(--color-text-secondary)] pl-3 border-l-2 border-[var(--color-teal)] text-xs leading-relaxed">
-                            ${parsedContent}
-                        </div>
-                    </details>`;
-                }).join('')}</div>`;
-            } else if (data.citations && data.citations.length > 0) {
-                citationBox = `<div class="mt-3 pt-2 border-t border-[var(--color-border)]">${data.citations.map((c) =>
-                    `<span class="inline-block text-[10px] font-mono px-2 py-0.5 rounded-md bg-[var(--color-teal-soft)] text-[var(--color-teal)] mr-1 mb-1">${escapeHtml(c)}</span>`
-                ).join('')}</div>`;
+        function setGenerating(generating) {
+            isGenerating = generating;
+            messageInput.disabled = generating;
+            loadingIndicator.classList.toggle('hidden', !generating);
+            if (generating) {
+                sendBtn.classList.remove('btn-primary');
+                sendBtn.classList.add('btn-secondary', 'text-red-500');
+                sendBtn.innerHTML = STOP_ICON_HTML;
+                sendBtn.title = 'Stop generating';
+                sendBtn.setAttribute('aria-label', 'Stop generating');
+                sendBtn.type = 'button';
+                sendBtn.disabled = false;
+            } else {
+                sendBtn.classList.remove('btn-secondary', 'text-red-500');
+                sendBtn.classList.add('btn-primary');
+                sendBtn.innerHTML = SEND_ICON_HTML;
+                sendBtn.title = 'Send message';
+                sendBtn.setAttribute('aria-label', 'Send message');
+                sendBtn.type = 'submit';
+                sendBtn.disabled = !messageInput.value.trim();
+                setTimeout(() => messageInput.focus(), 50);
             }
+        }
 
-            let formattedReply = marked.parse(data.reply || '');
-            formattedReply = highlightCitations(formattedReply);
-            const retryBtn = retryText ? `<button type="button" data-retry="1" class="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)]">Retry</button>` : '';
+        function stopCurrentOperation() {
+            if (demoRunning) {
+                demoRunning = false;
+                demoBtn.disabled = false;
+                demoBtn.innerHTML = `
+                    <svg class="w-3.5 h-3.5 text-[var(--color-teal)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>10-Turn Demo</span>
+                `;
+            }
+            if (abortController) {
+                abortController.abort();
+            }
+            setGenerating(false);
+        }
 
-            div.innerHTML = `
-                <div class="w-8 h-8 rounded-full avatar-ai flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">AI</div>
-                <div class="msg-assistant rounded-[var(--radius-lg)] rounded-tl-md p-4 max-w-[90%] text-sm shadow-sm">
-                    ${metaBanner}
-                    <div class="prose max-w-none text-sm leading-relaxed">${formattedReply}</div>
-                    ${citationBox}
-                    <div class="msg-toolbar mt-2 pt-1 border-t border-black/5 dark:border-white/5 flex gap-2"><button type="button" data-copy="1" class="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)]">Copy</button>${retryBtn}</div>
-                </div>
+        // -------------------------------------------------------------------------
+        // 10-Turn Automated Demo Benchmark
+        // -------------------------------------------------------------------------
+        async function run10TurnDemo() {
+            if (demoRunning) {
+                stopCurrentOperation();
+                return;
+            }
+            if (isGenerating) return;
+
+            // Create a dedicated benchmark chat
+            const benchmarkChatId = 'demo_' + Date.now();
+            const benchmarkChat = {
+                id: benchmarkChatId,
+                title: '10-Turn Benchmark Demo',
+                createdAt: Date.now(),
+                messages: []
+            };
+            chats.unshift(benchmarkChat);
+            activeChatId = benchmarkChatId;
+            saveChatsToStorage();
+            selectChat(benchmarkChatId);
+
+            demoRunning = true;
+            demoBtn.disabled = false;
+            demoBtn.title = 'Stop automated demo';
+            demoBtn.innerHTML = `
+                <svg class="w-3.5 h-3.5 text-red-500" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+                <span>Stop Demo</span>
             `;
-            div.querySelector('[data-copy]')?.addEventListener('click', (ev) => {
-                navigator.clipboard.writeText(data.reply || '').then(() => {
-                    ev.target.textContent = 'Copied';
-                    setTimeout(() => { ev.target.textContent = 'Copy'; }, 1200);
-                }).catch(() => {});
-            });
-            div.querySelector('[data-retry]')?.addEventListener('click', () => sendPrompt(retryText));
-            chatMessages.appendChild(div);
-            scrollToBottom();
+
+            for (let i = 0; i < BENCHMARK_TURNS.length; i++) {
+                if (!demoRunning) break;
+                const turnPrompt = BENCHMARK_TURNS[i];
+                loadingText.textContent = `Running Turn ${i + 1} of 10: "${turnPrompt.slice(0, 30)}…"`;
+                await sendPrompt(turnPrompt);
+                if (i < BENCHMARK_TURNS.length - 1 && demoRunning) {
+                    await new Promise(r => setTimeout(r, 600));
+                }
+            }
+
+            demoRunning = false;
+            demoBtn.disabled = false;
+            demoBtn.innerHTML = `
+                <svg class="w-3.5 h-3.5 text-[var(--color-teal)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>10-Turn Demo</span>
+            `;
         }
 
-        function escapeHtml(string) {
-            return String(string || '')
+        // -------------------------------------------------------------------------
+        // Document Upload & Toast Management
+        // -------------------------------------------------------------------------
+        function showUploadToast(text, isSpinning = true) {
+            uploadToastText.textContent = text;
+            uploadToastSpinner.classList.toggle('hidden', !isSpinning);
+            uploadToastCheck.classList.toggle('hidden', isSpinning);
+            uploadToast.classList.remove('translate-y-[-100px]', 'opacity-0');
+            uploadToast.classList.add('translate-y-0', 'opacity-100');
+        }
+
+        function hideUploadToast(delay = 3000) {
+            setTimeout(() => {
+                uploadToast.classList.remove('translate-y-0', 'opacity-100');
+                uploadToast.classList.add('translate-y-[-100px]', 'opacity-0');
+            }, delay);
+        }
+
+        function triggerFileUpload() {
+            globalFileInput.value = '';
+            globalFileInput.click();
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (dropZone) dropZone.classList.add('dragover-active');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (dropZone) dropZone.classList.remove('dragover-active');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (dropZone) dropZone.classList.remove('dragover-active');
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+                handleFileSelected(e.dataTransfer.files[0]);
+            }
+        }
+
+        async function handleFileSelected(file) {
+            if (!file) return;
+
+            showUploadToast(`Scanning & indexing "${file.name}"…`, true);
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch('/task2/api/upload/', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (!res.ok || !data.success) {
+                    throw new Error(data.error || 'Failed to index document');
+                }
+
+                showUploadToast(`✓ Indexed ${data.chunks_added || 1} chunks from "${data.filename}"!`, false);
+                hideUploadToast(3500);
+
+                // Add announcement message into current conversation
+                const chat = getActiveChat();
+                if (chat) {
+                    const noticeMsg = {
+                        id: 'msg_' + Date.now(),
+                        role: 'assistant',
+                        text: `📄 **Document Indexed**: I have ingested **\`${data.filename}\`** (${data.chunks_added || 1} chunks added into the RAG vector store). You can now ask questions directly about this document!`,
+                        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    };
+                    chat.messages.push(noticeMsg);
+                    saveChatsToStorage();
+                    renderMessages();
+                }
+
+            } catch (err) {
+                showUploadToast(`⚠️ Error: ${err.message}`, false);
+                hideUploadToast(4500);
+            } finally {
+                globalFileInput.value = '';
+            }
+        }
+
+        async function deleteUploadedDocument(filename, btnEl) {
+            if (!confirm(`Remove "${filename}" from the knowledge base?`)) return;
+
+            try {
+                const res = await fetch('/task2/api/delete_document/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    const row = btnEl.closest('[data-file]');
+                    if (row) row.remove();
+                } else {
+                    alert(data.error || 'Failed to remove document.');
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        // -------------------------------------------------------------------------
+        // UI Helpers & Modals
+        // -------------------------------------------------------------------------
+        function toggleSidebar() {
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                sidebarBackdrop.style.display = 'block';
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                sidebarBackdrop.style.display = 'none';
+            }
+        }
+
+        function closeSidebar() {
+            sidebar.classList.add('-translate-x-full');
+            sidebarBackdrop.style.display = 'none';
+        }
+
+        function openDocsModal() {
+            docsModal.style.display = 'flex';
+        }
+
+        function closeDocsModal() {
+            docsModal.style.display = 'none';
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
                 .replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
@@ -686,351 +1092,8 @@
                 .replace(/'/g, '&#039;');
         }
 
-        async function sendPrompt(text) {
-            messageInput.value = text;
-            await handleSubmit(new Event('submit'));
-        }
-
-        function askReset() {
-            document.getElementById('resetConfirm').classList.remove('hidden');
-        }
-        function cancelReset() {
-            document.getElementById('resetConfirm').classList.add('hidden');
-        }
-
-        messageInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-            }
-        });
-
-        async function resetSession(skipConfirm = false) {
-            if (!skipConfirm) {
-                askReset();
-                return;
-            }
-            cancelReset();
-
-            // 1. Immediately abort running demo and in-flight fetch
-            demoCancelled = true;
-            demoRunning = false;
-            if (chatAbortController) {
-                try { chatAbortController.abort(); } catch(e) {}
-                chatAbortController = null;
-            }
-
-            // 2. Unset busy and re-enable demo button
-            setChatBusy(false);
-            demoBtn.disabled = false;
-            demoBtn.textContent = '10-Turn Demo';
-            messageInput.value = '';
-
-            // 3. Clear server session memory in Django DB
-            const csrftoken = getCookie('csrftoken');
-            try {
-                await fetch('/task2/api/reset/', {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': csrftoken }
-                });
-            } catch (err) {
-                console.error('Reset error:', err);
-            }
-
-            // 4. Reset UI metrics and chat
-            chatMessages.innerHTML = welcomeHtml;
-            recordedTopics = [];
-            if (currentTurnSpan) currentTurnSpan.textContent = '0';
-            if (sidebarTurnText) sidebarTurnText.textContent = 'Turn 0 of 10';
-            if (sidebarProgressBar) sidebarProgressBar.style.width = '0%';
-            if (sidebarActiveTopic) sidebarActiveTopic.textContent = 'General Support';
-            if (sidebarTopicDesc) sidebarTopicDesc.textContent = 'Session memory reset. Awaiting new inquiry.';
-            if (topicSwitchBadge) topicSwitchBadge.classList.add('hidden');
-            if (antiRepeatStatus) {
-                antiRepeatStatus.textContent = 'Listening';
-                antiRepeatStatus.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-[var(--color-text-muted)]';
-            }
-            if (sidebarMemoryDetail) sidebarMemoryDetail.textContent = 'Session memory is empty.';
-            if (sidebarTopicList) sidebarTopicList.innerHTML = '<li class="text-[var(--color-text-muted)] italic">No topic shifts recorded yet</li>';
-            if (topicTrailCount) topicTrailCount.textContent = '0 explored';
-        }
-
-        async function handleSubmit(e) {
-            if (e) e.preventDefault();
-            const text = messageInput.value.trim();
-            if (!text || chatAbortController) return;
-
-            appendUserMessage(text);
-            messageInput.value = '';
-            setChatBusy(true);
-            scrollToBottom();
-
-            const csrftoken = getCookie('csrftoken');
-            chatAbortController = new AbortController();
-
-            try {
-                const response = await fetch('/task2/api/support_chat/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrftoken
-                    },
-                    body: JSON.stringify({ message: text }),
-                    signal: chatAbortController.signal
-                });
-
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const data = await response.json();
-                appendAssistantResponse(data);
-            } catch (err) {
-                if (isAbortError(err)) {
-                    appendAssistantResponse({ reply: '_Request was cancelled by user._' });
-                } else {
-                    appendAssistantResponse({ reply: `**Error communicating with support engine:** ${err.message}` }, text);
-                }
-            } finally {
-                chatAbortController = null;
-                setChatBusy(false);
-                messageInput.focus();
-            }
-        }
-
-        async function run10TurnDemo() {
-            if (demoRunning) {
-                // If demo is running, clicking acts as an immediate Stop button
-                stopRequest();
-                return;
-            }
-            demoRunning = true;
-            demoCancelled = false;
-            demoBtn.disabled = false;
-            demoBtn.textContent = 'Stop Demo';
-
-            // Clean server session & UI directly before starting fresh benchmark
-            const csrftoken = getCookie('csrftoken');
-            try {
-                await fetch('/task2/api/reset/', {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': csrftoken }
-                });
-            } catch(e) {}
-
-            chatMessages.innerHTML = welcomeHtml;
-            recordedTopics = [];
-            if (currentTurnSpan) currentTurnSpan.textContent = '0';
-            if (sidebarTurnText) sidebarTurnText.textContent = 'Turn 0 of 10';
-            if (sidebarProgressBar) sidebarProgressBar.style.width = '0%';
-            if (sidebarActiveTopic) sidebarActiveTopic.textContent = 'General Support';
-            if (sidebarTopicDesc) sidebarTopicDesc.textContent = 'Running 10-turn benchmark audit…';
-            if (sidebarTopicList) sidebarTopicList.innerHTML = '<li class="text-[var(--color-text-muted)] italic">No topic shifts recorded yet</li>';
-            if (topicTrailCount) topicTrailCount.textContent = '0 explored';
-
-            // Ensure sidebar is open during demo so evaluator sees insights live
-            if (sidebar.classList.contains('-ml-80')) {
-                sidebar.classList.remove('-ml-80');
-            }
-            if (sidebar.classList.contains('sidebar-hidden')) {
-                sidebar.classList.remove('sidebar-hidden');
-            }
-
-            for (let i = 0; i < BENCHMARK_TURNS.length; i++) {
-                if (demoCancelled) break;
-                demoBtn.textContent = `Turn ${i + 1}/10… (Stop)`;
-                messageInput.value = BENCHMARK_TURNS[i];
-                await handleSubmit(new Event('submit'));
-                if (demoCancelled) break;
-                await new Promise(r => setTimeout(r, 1200));
-            }
-
-            demoRunning = false;
-            demoBtn.disabled = false;
-            demoBtn.textContent = '10-Turn Demo';
-            setChatBusy(false);
-        }
-
-        async function uploadCustomDocument(file) {
-            if (!file) return;
-            const uploadBtn = document.getElementById('uploadDocBtn');
-            const uploadStatusLine = document.getElementById('uploadStatusLine');
-            const uploadStatusText = document.getElementById('uploadStatusText');
-            const customDocInput = document.getElementById('customDocInput');
-
-            uploadBtn.disabled = true;
-            uploadBtn.classList.add('opacity-50');
-            uploadStatusLine.classList.remove('hidden');
-            uploadStatusText.textContent = `Scanning & indexing "${file.name}"…`;
-
-            const formData = new FormData();
-            formData.append('file', file);
-
-            const csrftoken = getCookie('csrftoken');
-            try {
-                const response = await fetch('/task2/api/upload/', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': csrftoken
-                    },
-                    body: formData
-                });
-
-                const data = await response.json();
-                if (!response.ok || !data.success) {
-                    throw new Error(data.error || 'Failed to scan and index document.');
-                }
-
-                // 1. Update chunk counts in UI
-                const kbChunkBadge = document.getElementById('kbChunkBadge');
-                const headerChunksBadge = document.getElementById('headerChunksBadge');
-                if (kbChunkBadge) kbChunkBadge.textContent = `${data.total_chunks} Chunks`;
-                if (headerChunksBadge) headerChunksBadge.textContent = `${data.total_chunks} chunks`;
-
-                // 2. Append new file to Knowledge Base list in sidebar
-                const kbFileList = document.getElementById('kbFileList');
-                if (kbFileList) {
-                    const tagClass = data.is_pdf ? 'text-red-500 bg-red-500/10' : 'text-emerald-500 bg-emerald-500/10';
-                    const tagLabel = data.is_pdf ? 'PDF' : 'IMG';
-                    const row = document.createElement('div');
-                    row.className = 'flex items-center justify-between gap-1 text-[var(--color-text-secondary)] group hover:text-[var(--color-text)] transition-colors anim-fade-in';
-                    row.setAttribute('data-file', data.filename);
-                    row.innerHTML = `
-                        <div class="flex items-center gap-1.5 min-w-0">
-                            <span class="${tagClass} font-bold text-[9px] px-1 py-0.2 rounded shrink-0">${tagLabel}</span>
-                            <span class="truncate" title="${escapeHtml(data.filename)}">${escapeHtml(data.filename)}</span>
-                        </div>
-                        <button type="button" onclick="deleteUploadedDocument('${escapeHtml(data.filename)}', this)" title="Remove ${escapeHtml(data.filename)}" class="text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-500/10 p-0.5 rounded transition-all shrink-0" aria-label="Remove ${escapeHtml(data.filename)}">
-                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
-                        </button>
-                    `;
-                    kbFileList.appendChild(row);
-                }
-
-                // 3. Update sidebar active topic and memory detail
-                if (data.initial_topic && sidebarActiveTopic) {
-                    sidebarActiveTopic.textContent = data.initial_topic;
-                }
-                if (sidebarMemoryDetail) {
-                    sidebarMemoryDetail.textContent = `Indexed "${data.filename}" (${data.chunks_added} chunks across ${data.pages_scanned} page(s)).`;
-                }
-
-                // 4. Add dynamic follow-up chips for the uploaded document
-                if (followupRow) {
-                    const cleanStem = data.filename.replace(/\.[^/.]+$/, '').replace(/[_\-]+/g, ' ');
-                    const newChips = [
-                        `Summarize key points in ${data.filename}`,
-                        `What are the main rules or terms in ${data.filename}?`,
-                        `What does ${cleanStem} specify?`
-                    ];
-                    followupRow.innerHTML = newChips.map((q) =>
-                        `<button type="button" class="suggest-chip text-xs shrink-0 whitespace-nowrap" data-q="${escapeHtml(q)}">
-                            <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-teal)] shrink-0"></span>
-                            <span>${escapeHtml(q)}</span>
-                        </button>`
-                    ).join('');
-                    followupRow.querySelectorAll('[data-q]').forEach((btn) => {
-                        btn.addEventListener('click', () => sendPrompt(btn.getAttribute('data-q')));
-                    });
-                }
-
-                // 5. Insert system notification into chat
-                const notifDiv = document.createElement('div');
-                notifDiv.className = 'flex items-start gap-3';
-                notifDiv.innerHTML = `
-                    <div class="w-8 h-8 rounded-full avatar-ai flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">AI</div>
-                    <div class="msg-assistant rounded-[var(--radius-lg)] rounded-tl-md p-4 max-w-[90%] text-sm shadow-sm border border-[var(--color-teal)]/30 bg-[var(--color-teal-soft)]/20">
-                        <p class="font-semibold text-[var(--color-text)] flex items-center gap-2">
-                            <span>📄 Document Scanned & Grounded</span>
-                            <span class="badge text-[10px] font-mono">${data.chunks_added} Chunks</span>
-                        </p>
-                        <p class="text-[var(--color-text-secondary)] mt-1.5 text-xs leading-relaxed">
-                            I have scanned and indexed <strong>${escapeHtml(data.filename)}</strong> (${data.pages_scanned} page(s), ${data.chunks_added} chunks). You can now ask questions about this document across our multi-turn conversation, and I will cite its exact sections and pages.
-                        </p>
-                    </div>
-                `;
-                chatMessages.appendChild(notifDiv);
-                scrollToBottom();
-
-            } catch (err) {
-                alert(`Upload & scanning failed: ${err.message}`);
-            } finally {
-                uploadBtn.disabled = false;
-                uploadBtn.classList.remove('opacity-50');
-                uploadStatusLine.classList.add('hidden');
-                customDocInput.value = '';
-            }
-        }
-
-        async function deleteUploadedDocument(filename, btnElement) {
-            if (!filename) return;
-            if (!confirm(`Are you sure you want to remove "${filename}" from the knowledge base?`)) {
-                return;
-            }
-
-            if (btnElement) {
-                btnElement.disabled = true;
-                btnElement.classList.add('opacity-40');
-            }
-
-            try {
-                const csrftoken = getCookie('csrftoken');
-                const response = await fetch('/task2/api/delete_document/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrftoken
-                    },
-                    body: JSON.stringify({ filename: filename })
-                });
-
-                const data = await response.json();
-                if (!response.ok || !data.success) {
-                    throw new Error(data.error || 'Failed to remove document.');
-                }
-
-                // 1. Remove element from sidebar list
-                const targetRow = btnElement ? btnElement.closest('[data-file]') : document.querySelector(`[data-file="${filename}"]`);
-                if (targetRow) {
-                    targetRow.remove();
-                }
-
-                // 2. Update chunk counters
-                const kbChunkBadge = document.getElementById('kbChunkBadge');
-                const headerChunksBadge = document.getElementById('headerChunksBadge');
-                if (kbChunkBadge) kbChunkBadge.textContent = `${data.total_chunks} Chunks`;
-                if (headerChunksBadge) headerChunksBadge.textContent = `${data.total_chunks} chunks`;
-
-                // 3. Update memory status text
-                if (sidebarMemoryDetail) {
-                    sidebarMemoryDetail.textContent = `Removed "${filename}" from knowledge base (${data.total_chunks} chunks remaining).`;
-                }
-
-                // 4. Append chat notification
-                const notifDiv = document.createElement('div');
-                notifDiv.className = 'flex items-start gap-3';
-                notifDiv.innerHTML = `
-                    <div class="w-8 h-8 rounded-full avatar-ai flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">AI</div>
-                    <div class="msg-assistant rounded-[var(--radius-lg)] rounded-tl-md p-3 max-w-[85%] text-xs shadow-sm border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5">
-                        <p class="font-medium text-[var(--color-text)] flex items-center gap-1.5">
-                            <span class="text-red-500 font-bold">✕</span>
-                            <span>Document Removed</span>
-                        </p>
-                        <p class="text-[var(--color-text-secondary)] mt-1 leading-relaxed">
-                            Removed <strong>${escapeHtml(filename)}</strong> from active knowledge grounding. Current knowledge base contains <strong>${data.total_chunks}</strong> indexed chunks.
-                        </p>
-                    </div>
-                `;
-                chatMessages.appendChild(notifDiv);
-                scrollToBottom();
-
-            } catch (err) {
-                alert(`Failed to remove document: ${err.message}`);
-                if (btnElement) {
-                    btnElement.disabled = false;
-                    btnElement.classList.remove('opacity-40');
-                }
-            }
-        }
+        // Initialize on DOM ready
+        document.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>
 </html>

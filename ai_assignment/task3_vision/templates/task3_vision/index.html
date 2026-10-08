@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -335,9 +335,10 @@
                                 <button type="button" onclick="clearSelectedFile(event)" class="text-[var(--color-text-muted)] hover:text-red-600" aria-label="Clear">&times;</button>
                             </div>
                         </div>
-                        <div class="mt-3 flex gap-2">
-                            <button type="submit" id="submitBtn" class="btn btn-primary flex-1">Process document</button>
-                            <button type="button" id="stopBtn" onclick="stopRequest()" class="hidden btn btn-stop shrink-0">Stop</button>
+                        <div class="mt-3">
+                            <button type="submit" id="submitBtn" class="btn btn-primary w-full flex items-center justify-center gap-2 transition-all" aria-label="Process document" title="Process document">
+                                <span>Process document</span>
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -701,9 +702,20 @@
         const errorState = document.getElementById('errorState');
         const loadingIndicator = document.getElementById('loadingIndicator');
         const submitBtn = document.getElementById('submitBtn');
-        const stopBtn = document.getElementById('stopBtn');
         const stopBtnLoading = document.getElementById('stopBtnLoading');
         const batchBtn = document.getElementById('batchBtn');
+
+        const PROCESS_BTN_HTML = '<span>Process document</span>';
+        const STOP_PROCESS_BTN_HTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg><span>Stop</span>';
+
+        if (submitBtn) {
+            submitBtn.addEventListener('click', (e) => {
+                if (requestAbortController) {
+                    e.preventDefault();
+                    stopRequest();
+                }
+            });
+        }
 
         function isAbortError(err) {
             return err && (err.name === 'AbortError' || err.message === 'The user aborted a request.');
@@ -769,9 +781,26 @@
         }
 
         function setBusy(busy) {
-            if (submitBtn) submitBtn.disabled = busy;
             if (batchBtn) batchBtn.disabled = busy;
-            if (stopBtn) stopBtn.classList.toggle('hidden', !busy);
+            if (submitBtn) {
+                if (busy) {
+                    submitBtn.classList.remove('btn-primary');
+                    submitBtn.classList.add('btn-stop');
+                    submitBtn.innerHTML = STOP_PROCESS_BTN_HTML;
+                    submitBtn.type = 'button';
+                    submitBtn.title = 'Stop processing';
+                    submitBtn.setAttribute('aria-label', 'Stop processing');
+                    submitBtn.disabled = false;
+                } else {
+                    submitBtn.classList.remove('btn-stop');
+                    submitBtn.classList.add('btn-primary');
+                    submitBtn.innerHTML = PROCESS_BTN_HTML;
+                    submitBtn.type = 'submit';
+                    submitBtn.title = 'Process document';
+                    submitBtn.setAttribute('aria-label', 'Process document');
+                    submitBtn.disabled = false;
+                }
+            }
             if (stopBtnLoading) stopBtnLoading.classList.toggle('hidden', !busy);
         }
 
@@ -858,6 +887,10 @@
 
         async function handleFormSubmit(e) {
             e.preventDefault();
+            if (requestAbortController) {
+                stopRequest();
+                return;
+            }
             const file = getSelectedUploadFile();
             if (!file) {
                 showError('Choose a file before processing.');

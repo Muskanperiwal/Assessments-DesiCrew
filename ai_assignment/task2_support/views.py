@@ -17,7 +17,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .engine import RAG_ENGINE, get_relevant_context, format_context, STOP_WORDS
-from .memory import SessionMemory, get_session_memory, save_session_memory, compute_cosine_similarity
+from .memory import SessionMemory, get_session_memory, save_session_memory, clear_session_memory, compute_cosine_similarity
 
 logger = logging.getLogger(__name__)
 
@@ -26,18 +26,49 @@ _EXCLUDED_MODELS = set()
 _QUOTA_EXHAUSTED_KEYS = {}
 
 SYSTEM_PROMPT = (
-    "You are an expert customer support assistant for a company. "
-    "You answer user queries based strictly on the provided retrieved document context.\n\n"
-    "Conversation Rules:\n"
-    "Memory & Non-Repetition: You have access to the chat history. "
-    "Do not repeat information you have already provided in previous turns. "
-    "If a user asks a follow-up, build upon your previous answer.\n\n"
-    "Topic Switching: If the user changes the topic entirely, acknowledge the switch gracefully "
-    "and address the new topic using the new context.\n\n"
-    "Mandatory Citations: You MUST cite the specific document section you are drawing from for every factual claim. "
-    "Use the format `[Doc: <filename>, Page: <page_number>, Section: <section_title>]` inline or at the end of your sentences.\n\n"
-    "Grounding: If the answer is not in the provided context, politely state that you do not have that information. Do not hallucinate."
+    "You are a document-grounded support assistant.\n"
+    "Rules:\n"
+    "1) Answer ONLY from RETRIEVED DOCUMENT CONTEXT below. If missing, say you cannot find it in the documents.\n"
+    "2) Use chat history for follow-ups (e.g. 'the second method', 'what about P3?') — resolve references from prior turns.\n"
+    "3) Do NOT repeat full policy paragraphs already given; add new detail or a one-line recap when the user asks to be reminded.\n"
+    "4) On topic change, one short bridge sentence, then answer the new topic.\n"
+    "5) Every factual sentence must include a citation: [Doc: <file>, Page: <n>, Section: <title>].\n"
+    "6) Be concise (2–6 sentences unless the user asks for a list).\n"
+    "7) ONE document per answer: use only PRIMARY DOCUMENT excerpts. Never blend SLA text with billing or security files."
 )
+
+GEMINI_MODEL_CANDIDATES = [
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-flash-latest",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+]
+
+
+def is_person_lookup_query(message: str) -> bool:
+    low = message.lower()
+    return bool(
+        re.search(r'\b(do you know|who is|who\'s|tell me about)\b', low)
+        or (len(message.split()) <= 6 and re.search(r'\b[a-z]{4,}\b', low))
+    )
+
+
+def extract_lookup_entity(message: str) -> str:
+    low = message.lower()
+    m = re.search(r'\b(?:do you know|who is|who\'s|tell me about)\s+([a-z][a-z\s\-]{1,40})', low)
+    if m:
+        return m.group(1).strip().title()
+    words = [w for w in re.findall(r'\b[A-Za-z]{3,}\b', message) if w.lower() not in STOP_WORDS]
+    return words[-1].title() if words else ""
+
+
+def truncate_grounded_text(text: str, max_len: int = 300) -> str:
+    flat = re.sub(r'\s+', ' ', (text or "").strip())
+    if len(flat) <= max_len:
+        return flat
+    cut = flat[: max_len - 1].rsplit(' ', 1)[0]
+    return cut + '…'
 
 
 def stem_token(word: str) -> str:
@@ -111,6 +142,11 @@ def score_block_relevance(query: str, block: str) -> float:
     if 'professional' in q_low and 'professional plan' in b_low:
         score += 5.0
 
+    if is_person_lookup_query(query):
+        entity = extract_lookup_entity(query).lower()
+        if entity and entity in b_low:
+            score += 25.0
+
     return score
 
 
@@ -138,6 +174,7 @@ def api_support_chat(request: HttpRequest) -> JsonResponse:
     try:
         data = json.loads(request.body.decode('utf-8'))
         user_message = data.get('message', '').strip()
+        chat_id = data.get('chat_id')
     except Exception:
         return JsonResponse({"error": "Invalid JSON payload in request body"}, status=400)
 
@@ -145,15 +182,18 @@ def api_support_chat(request: HttpRequest) -> JsonResponse:
         return JsonResponse({"error": "Message cannot be empty"}, status=400)
 
     # 1. Retrieve session memory
-    memory = get_session_memory(request)
+    memory = get_session_memory(request, chat_id=chat_id)
     turn_number = memory.turn_count + 1
     history = memory.get_chat_history(max_turns=10)
     topic_history = list(memory.topic_history)
     active_topic = memory.active_topic
 
-    # 2. Retrieve top-K relevant chunks via ChromaDB RAG
-    relevant_chunks = get_relevant_context(user_message, top_k=3)
+    # 2. Hybrid RAG retrieval (expanded query + single-file focus)
+    retrieval_query = memory.build_retrieval_query(user_message)
+    source_lock = RAG_ENGINE.detect_filename_in_query(user_message) or memory.get_document_lock(user_message)
+    relevant_chunks = get_relevant_context(retrieval_query, top_k=5, source_file_lock=source_lock)
     formatted_context = format_context(relevant_chunks)
+    session_brief = memory.get_session_brief(max_turns=8)
 
     # 3. Score candidate blocks across all retrieved chunks
     is_reminder = any(rem in user_message.lower() for rem in ['remind', 'repeat', 'again', 'what were', 'summarize'])
@@ -168,7 +208,7 @@ def api_support_chat(request: HttpRequest) -> JsonResponse:
                 continue
             norm_fact = re.sub(r'[^a-zA-Z0-9]', '', eval_block.lower()[:60])
             already = memory.has_fact_been_delivered(norm_fact)
-            raw_sc = score_block_relevance(user_message, eval_block)
+            raw_sc = score_block_relevance(retrieval_query, eval_block)
             # Give semantic vector rank bonus (top vector matches from ChromaDB get priority)
             rank_bonus = max(0.0, 4.0 - rank * 1.5)
             eff_sc = raw_sc + rank_bonus
@@ -187,13 +227,22 @@ def api_support_chat(request: HttpRequest) -> JsonResponse:
     scored_candidates.sort(key=lambda x: x['eff_score'], reverse=True)
     best_candidate = scored_candidates[0] if scored_candidates else None
 
-    # Determine topic & citation based on highest scoring chunk
-    if best_candidate:
-        primary_chunk = best_candidate['chunk']
+    # Topic & citation from reranked retrieval (best block only refines excerpt)
+    if relevant_chunks:
+        primary_chunk = relevant_chunks[0]
         current_topic = primary_chunk.get("section_title", "Customer Support Policy")
         primary_citation = primary_chunk.get("citation", "")
-    elif relevant_chunks:
-        primary_chunk = relevant_chunks[0]
+        primary_src = primary_chunk.get("source_file")
+        if (
+            best_candidate
+            and best_candidate.get("eff_score", 0) >= 4.0
+            and best_candidate["chunk"].get("source_file") == primary_src
+        ):
+            primary_chunk = best_candidate["chunk"]
+            current_topic = primary_chunk.get("section_title", current_topic)
+            primary_citation = primary_chunk.get("citation", primary_citation)
+    elif best_candidate:
+        primary_chunk = best_candidate["chunk"]
         current_topic = primary_chunk.get("section_title", "Customer Support Policy")
         primary_citation = primary_chunk.get("citation", "")
     else:
@@ -219,10 +268,9 @@ def api_support_chat(request: HttpRequest) -> JsonResponse:
     # 6. Build Augmented Prompt with Directives
     prompt_guidance = []
     if is_topic_switch:
-        if returning_to_previous_topic:
-            prompt_guidance.append(f"[Directive: The user is returning to a previously discussed topic: '{current_topic}'. Acknowledge the return gracefully.]")
-        else:
-            prompt_guidance.append(f"[Directive: Topic switch detected from '{active_topic}' to '{current_topic}'. Acknowledge this transition gracefully.]")
+        prompt_guidance.append(
+            f"[Directive: Context shifted to '{current_topic}'. Do not mention topic switching; answer directly.]"
+        )
 
     if anti_rep_triggered or is_reminder:
         prompt_guidance.append(
@@ -232,6 +280,7 @@ def api_support_chat(request: HttpRequest) -> JsonResponse:
 
     guidance_block = ("\n" + "\n".join(prompt_guidance) + "\n") if prompt_guidance else ""
     augmented_user_prompt = (
+        f"SESSION MEMORY (recent dialogue):\n{session_brief}\n\n"
         f"RETRIEVED DOCUMENT CONTEXT:\n{formatted_context}\n"
         f"{guidance_block}\n"
         f"USER MESSAGE:\n{user_message}"
@@ -242,6 +291,7 @@ def api_support_chat(request: HttpRequest) -> JsonResponse:
         history=history,
         augmented_user_prompt=augmented_user_prompt,
         user_message=user_message,
+        scoring_query=retrieval_query,
         relevant_chunks=relevant_chunks,
         best_candidate=best_candidate,
         is_topic_switch=is_topic_switch,
@@ -264,9 +314,10 @@ def api_support_chat(request: HttpRequest) -> JsonResponse:
         delivered_facts=new_facts_to_log,
         citation=primary_citation,
         assistant_reply=reply_text,
-        citations=all_citations
+        citations=all_citations,
+        source_file=(primary_chunk.get("source_file") if primary_chunk else ""),
     )
-    save_session_memory(request, memory)
+    save_session_memory(request, memory, chat_id=chat_id)
 
     sources = []
     for chunk in relevant_chunks[:3]:
@@ -299,7 +350,9 @@ def api_support_chat(request: HttpRequest) -> JsonResponse:
         "is_topic_switch": is_topic_switch,
         "returning_to_previous_topic": returning_to_previous_topic,
         "turn_number": turn_number,
-        "total_turns": memory.turn_count
+        "total_turns": memory.turn_count,
+        "chat_id": chat_id,
+        "source_file": primary_chunk.get("source_file") if primary_chunk else None,
     })
 
 
@@ -307,6 +360,7 @@ def call_gemini_chat(
     history: List[Dict[str, str]],
     augmented_user_prompt: str,
     user_message: str,
+    scoring_query: str,
     relevant_chunks: List[Dict[str, Any]],
     best_candidate: Optional[Dict[str, Any]],
     is_topic_switch: bool,
@@ -322,8 +376,6 @@ def call_gemini_chat(
     if single_key and single_key not in keys_pool:
         keys_pool = [single_key] + keys_pool
 
-    candidate_models = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest']
-
     try:
         import google.generativeai as genai
 
@@ -337,32 +389,41 @@ def call_gemini_chat(
 
         import time
         now = time.time()
+        deadline = now + 6.0
         active_keys = [k for k in keys_pool if k and (_QUOTA_EXHAUSTED_KEYS.get(k, 0) + 300 < now)]
 
         for key_candidate in active_keys:
+            if time.time() > deadline:
+                break
             genai.configure(api_key=key_candidate)
 
-            for model_name in candidate_models:
+            for model_name in GEMINI_MODEL_CANDIDATES:
+                if time.time() > deadline:
+                    break
                 if model_name in _EXCLUDED_MODELS:
                     continue
                 try:
                     model = genai.GenerativeModel(
                         model_name=model_name,
-                        system_instruction=SYSTEM_PROMPT
+                        system_instruction=SYSTEM_PROMPT,
                     )
                     chat = model.start_chat(history=chat_history_payload)
-                    response = chat.send_message(augmented_user_prompt)
+                    try:
+                        response = chat.send_message(
+                            augmented_user_prompt,
+                            request_options={"timeout": 12},
+                        )
+                    except TypeError:
+                        response = chat.send_message(augmented_user_prompt)
                     if response and response.text:
                         return response.text.strip()
                 except Exception as model_err:
                     err_str = str(model_err)
-                    if "404" in err_str:
+                    if "404" in err_str or "not found" in err_str.lower():
                         _EXCLUDED_MODELS.add(model_name)
-                        continue
                     elif "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-                        continue
-                    else:
-                        continue
+                        break
+                    continue
             _QUOTA_EXHAUSTED_KEYS[key_candidate] = time.time()
     except Exception as general_err:
         logger.error(f"Failed invoking Gemini: {general_err}")
@@ -370,6 +431,7 @@ def call_gemini_chat(
     # Deterministic high-precision fallback
     return synthesize_deterministic_support_reply(
         user_message=user_message,
+        scoring_query=scoring_query or user_message,
         relevant_chunks=relevant_chunks,
         best_candidate=best_candidate,
         is_topic_switch=is_topic_switch,
@@ -381,8 +443,52 @@ def call_gemini_chat(
     )
 
 
+def collect_grounded_snippets(
+    user_message: str,
+    relevant_chunks: List[Dict[str, Any]],
+    max_snippets: int = 4,
+) -> List[Dict[str, Any]]:
+    """Pick highest-scoring lines/bullets across chunks for extractive answers."""
+    snippets: List[Dict[str, Any]] = []
+    primary_citation = (relevant_chunks[0].get("citation") if relevant_chunks else "") or ""
+    for chunk in relevant_chunks:
+        citation = chunk.get("citation") or ""
+        meta = {
+            "text": chunk.get("text") or "",
+            "section_title": chunk.get("section_title") or "",
+            "source_file": chunk.get("source_file") or "",
+        }
+        chunk_intent = RAG_ENGINE._intent_boost(user_message, meta)
+        if citation == primary_citation:
+            chunk_intent += 4.0
+        for block in extract_coherent_blocks(chunk.get("text", "")):
+            clean = re.sub(r'^#{1,6}\s*', '', block).strip()
+            if clean.startswith(('- ', '• ', '– ')):
+                clean = clean[2:].strip()
+            if len(clean) < 25:
+                continue
+            score = score_block_relevance(user_message, clean) + chunk_intent
+            line_meta = {**meta, "text": clean}
+            score += RAG_ENGINE._intent_boost(user_message, line_meta) * 0.5
+            if score <= 0:
+                continue
+            snippets.append({"text": clean, "score": score, "citation": citation})
+    snippets.sort(key=lambda x: x["score"], reverse=True)
+    if relevant_chunks:
+        primary_src = relevant_chunks[0].get("source_file")
+        same_file = [s for s in snippets if primary_src in (s.get("citation") or "")]
+        if same_file:
+            snippets = same_file
+    if snippets and snippets[0]["score"] < 3.0:
+        return snippets[:1]
+    best_score = snippets[0]["score"] if snippets else 0.0
+    trimmed = [s for s in snippets if s["score"] >= best_score * 0.72]
+    return (trimmed or snippets)[:max_snippets]
+
+
 def synthesize_deterministic_support_reply(
     user_message: str,
+    scoring_query: str,
     relevant_chunks: List[Dict[str, Any]],
     best_candidate: Optional[Dict[str, Any]],
     is_topic_switch: bool,
@@ -392,39 +498,65 @@ def synthesize_deterministic_support_reply(
     anti_rep_triggered: bool,
     primary_citation: str
 ) -> str:
-    """Deterministic conversational synthesis with coherent blocks, anti-repetition, and citations."""
-    reply_parts = []
+    """Extractive, citation-backed fallback when the LLM is unavailable."""
+    reply_parts: List[str] = []
+    person_q = is_person_lookup_query(user_message)
+    max_snippets = 1 if person_q else 2
 
-    # 1. Topic Transition / Continuity Bridge
-    if is_topic_switch:
-        if returning_to_previous_topic:
-            reply_parts.append(f"*Returning to our earlier discussion regarding **{current_topic}**:*\n\n")
+    if anti_rep_triggered and not person_q:
+        reply_parts.append("Brief recap:\n\n")
+
+    snippets = collect_grounded_snippets(scoring_query, relevant_chunks, max_snippets=max_snippets)
+    if not snippets and best_candidate and best_candidate.get("block"):
+        snippets = [{
+            "text": best_candidate["block"],
+            "citation": primary_citation,
+            "score": 1.0,
+        }]
+
+    if snippets:
+        cite = snippets[0].get("citation") or primary_citation
+        body = snippets[0]["text"]
+        if body.startswith(('- ', '• ', '– ')):
+            body = body[2:].strip()
+        body = truncate_grounded_text(body, max_len=320 if person_q else 420)
+        if person_q:
+            entity = extract_lookup_entity(user_message)
+            if entity and entity.lower() in body.lower():
+                reply_parts.append(
+                    f"Yes — **{entity}** is described in the knowledge base: {body}\n\n{cite}"
+                )
+            else:
+                reply_parts.append(f"From the documents: {body}\n\n{cite}")
         else:
-            prev_name = active_topic or "our previous inquiry"
-            reply_parts.append(f"*Acknowledging the topic switch from **{prev_name}** to **{current_topic}**:*\n\n")
-
-    # 2. Anti-Repetition Acknowledgment
-    if anti_rep_triggered:
-        reply_parts.append(
-            "> **Note:** *As discussed earlier in this session, you have already received the baseline policy for this topic. "
-            "(Avoiding repeating previously delivered rules).* Here are the specific points addressing your inquiry:\n\n"
-        )
-
-    # 3. Targeted Coherent Policy Blocks
-    if best_candidate and best_candidate.get('block'):
-        reply_parts.append(best_candidate['block'])
-        reply_parts.append(f"\n\n**Official Citation:** `{primary_citation}`")
+            lines = []
+            for snip in snippets:
+                scite = snip.get("citation") or primary_citation
+                sbody = snip["text"]
+                if sbody.startswith(('- ', '• ', '– ')):
+                    sbody = sbody[2:].strip()
+                sbody = truncate_grounded_text(sbody, max_len=380)
+                lines.append(f"- {sbody} {scite}")
+            reply_parts.append("\n".join(lines))
     elif relevant_chunks:
         chunk = relevant_chunks[0]
-        blocks = extract_coherent_blocks(chunk.get("text", ""))
-        chosen_blocks = [b for b in blocks if not b.startswith(('#', '##'))]
-        if chosen_blocks:
-            reply_parts.append("\n\n".join(chosen_blocks[:2]))
+        cite = chunk.get("citation") or primary_citation
+        excerpt = truncate_grounded_text(chunk.get("text") or "", max_len=320)
+        if person_q:
+            entity = extract_lookup_entity(user_message)
+            reply_parts.append(f"Yes — **{entity}** is in `{chunk.get('source_file', 'document')}`: {excerpt}\n\n{cite}")
         else:
-            reply_parts.append(chunk.get("text", "")[:300])
-        reply_parts.append(f"\n\n**Official Citation:** `{primary_citation}`")
+            reply_parts.append(f"{excerpt}\n\n{cite}")
     else:
-        reply_parts.append("I do not have specific documented policies matching this query in the provided knowledge base.")
+        if person_q:
+            entity = extract_lookup_entity(user_message)
+            reply_parts.append(
+                f"No indexed document mentions **{entity or 'that name'}**. Upload the relevant file or rephrase."
+            )
+        else:
+            reply_parts.append(
+                "Not found in the indexed documents. Rephrase or upload the file."
+            )
 
     return "".join(reply_parts)
 
@@ -432,18 +564,22 @@ def synthesize_deterministic_support_reply(
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_reset(request: HttpRequest) -> JsonResponse:
-    """Resets the multi-turn session memory."""
-    memory = get_session_memory(request)
-    memory.clear()
-    save_session_memory(request, memory)
+    """Resets multi-turn session memory for a specific chat or all sessions."""
+    chat_id = None
+    if request.body:
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+            chat_id = data.get('chat_id')
+        except Exception:
+            pass
+    if not chat_id:
+        chat_id = request.POST.get('chat_id') or request.GET.get('chat_id')
 
-    for key in ['support_chat_history', 'support_topics', 'support_active_topic', 'support_delivered_facts', 'support_memory']:
-        if key in request.session:
-            del request.session[key]
-    request.session.modified = True
+    clear_session_memory(request, chat_id=chat_id)
 
     return JsonResponse({
-        "status": "Session reset successfully.",
+        "status": f"Session memory {'for ' + chat_id if chat_id else 'all'} reset successfully.",
+        "chat_id": chat_id,
         "turn_count": 0
     })
 
@@ -454,7 +590,7 @@ def api_upload_document(request: HttpRequest) -> JsonResponse:
     """Uploads, scans (PDF/Image OCR), and dynamically indexes a custom document into the RAG knowledge base."""
     uploaded_file = request.FILES.get('file')
     if not uploaded_file:
-        return JsonResponse({"error": "No file uploaded. Please attach a PDF or image file."}, status=400)
+        return JsonResponse({"error": "No file uploaded. Please attach a PDF, Word (.docx), Text (.txt, .md), or Image file."}, status=400)
 
     try:
         file_bytes = uploaded_file.read()

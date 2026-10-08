@@ -3,8 +3,7 @@
     (function() {
         try {
             var savedTheme = localStorage.getItem('app_theme');
-            var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-            var theme = savedTheme ? savedTheme : (systemDark ? 'dark' : 'light');
+            var theme = savedTheme === 'dark' ? 'dark' : 'light';
             if (theme === 'dark') {
                 document.documentElement.setAttribute('data-theme', 'dark');
                 document.documentElement.classList.add('dark');
@@ -270,29 +269,31 @@
         cursor: not-allowed;
     }
 
-    /* Soft stop — only used while a request is in flight */
+    /* Stop button — used while a request or generation is in flight */
     .btn-stop {
-        background: rgba(15, 23, 42, 0.06);
-        color: #475569;
-        border: 1px solid rgba(15, 23, 42, 0.12);
-        box-shadow: none;
+        background: rgba(239, 68, 68, 0.1);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.28);
+        box-shadow: 0 1px 2px rgba(220, 38, 38, 0.06);
     }
     .btn-stop:hover:not(:disabled) {
-        background: rgba(15, 23, 42, 0.1);
-        color: #0f172a;
-        border-color: rgba(15, 23, 42, 0.18);
-        filter: none;
+        background: #ef4444;
+        color: #ffffff;
+        border-color: #ef4444;
+        box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25);
     }
     html[data-theme="dark"] .btn-stop,
     html.dark .btn-stop {
-        background: rgba(255, 255, 255, 0.08);
-        color: #cbd5e1;
-        border-color: rgba(255, 255, 255, 0.14);
+        background: rgba(239, 68, 68, 0.18);
+        color: #fca5a5;
+        border-color: rgba(239, 68, 68, 0.35);
     }
     html[data-theme="dark"] .btn-stop:hover:not(:disabled),
     html.dark .btn-stop:hover:not(:disabled) {
-        background: rgba(255, 255, 255, 0.12);
-        color: #f1f5f9;
+        background: #ef4444;
+        color: #ffffff;
+        border-color: #ef4444;
+        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.35);
     }
 
     /* Form fields — theme-aware, never rely on Tailwind dark: media */
