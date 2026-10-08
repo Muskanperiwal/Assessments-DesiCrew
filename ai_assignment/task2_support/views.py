@@ -209,8 +209,8 @@ def call_gemini_chat(
     if single_key and single_key not in keys_pool:
         keys_pool = [single_key] + keys_pool
 
-    # Models priority: gemini-1.5-flash as requested, falling back to active 2026 endpoints
-    candidate_models = ['gemini-1.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-3.8-flash']
+    # Models priority: Active high-speed Gemini endpoints
+    candidate_models = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest']
 
     try:
         import google.generativeai as genai
@@ -231,6 +231,7 @@ def call_gemini_chat(
 
         for key_candidate in active_keys:
             genai.configure(api_key=key_candidate)
+            key_succeeded = False
 
             for model_name in candidate_models:
                 if model_name in _EXCLUDED_MODELS:
@@ -246,16 +247,14 @@ def call_gemini_chat(
                         return response.text.strip()
                 except Exception as model_err:
                     err_str = str(model_err)
-                    # If 404, mark model globally so we don't retry it on every key
                     if "404" in err_str:
                         _EXCLUDED_MODELS.add(model_name)
                         continue
-                    # If quota reached, remember key cooldown and advance to next key
                     elif "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-                        _QUOTA_EXHAUSTED_KEYS[key_candidate] = time.time()
-                        break
+                        continue
                     else:
                         continue
+            _QUOTA_EXHAUSTED_KEYS[key_candidate] = time.time()
     except Exception as general_err:
         logger.error(f"Failed invoking Gemini: {general_err}")
 
@@ -298,30 +297,37 @@ def synthesize_deterministic_support_reply(
             "(Avoiding repeating previously delivered rules).* Here are the specific points addressing your inquiry:\n\n"
         )
 
-    # 3. Targeted Policy Facts
+    # 3. Targeted Policy Facts across all retrieved chunks
     if relevant_chunks:
-        top_chunk = relevant_chunks[0]
-        text_content = top_chunk.get("text", "")
-        citation = top_chunk.get("citation", "")
-
-        # Find most relevant sentences/lines matching query
         q_words = [w for w in re.findall(r'\b\w+\b', user_message.lower()) if len(w) > 3 and w not in STOP_WORDS]
-        matching_lines = []
+        best_chunk = relevant_chunks[0]
+        best_chunk_score = -1
+        best_matching_lines = []
 
-        for line in text_content.split('\n'):
-            line_str = line.strip()
-            if not line_str or line_str.startswith('#'):
-                continue
-            score = sum(1 for w in q_words if w in line_str.lower())
-            if score > 0:
-                matching_lines.append((score, line_str))
+        for chunk in relevant_chunks[:3]:
+            chunk_text = chunk.get("text", "")
+            chunk_matching = []
+            chunk_score = 0
+            for line in chunk_text.split('\n'):
+                line_str = line.strip()
+                if not line_str or line_str.startswith('#'):
+                    continue
+                score = sum(1 for w in q_words if w in line_str.lower())
+                if score > 0:
+                    chunk_matching.append((score, line_str))
+                    chunk_score += score
+            if chunk_score > best_chunk_score:
+                best_chunk_score = chunk_score
+                best_chunk = chunk
+                best_matching_lines = chunk_matching
 
-        if matching_lines:
-            matching_lines.sort(key=lambda x: x[0], reverse=True)
-            chosen_body = "\n\n".join(item[1] for item in matching_lines[:3])
+        citation = best_chunk.get("citation", "")
+        if best_matching_lines:
+            best_matching_lines.sort(key=lambda x: x[0], reverse=True)
+            chosen_body = "\n\n".join(item[1] for item in best_matching_lines[:3])
             reply_parts.append(chosen_body)
         else:
-            # First 2 non-header paragraphs
+            text_content = best_chunk.get("text", "")
             paragraphs = [p.strip() for p in text_content.split('\n\n') if p.strip() and not p.startswith('#')]
             reply_parts.append("\n\n".join(paragraphs[:2]) if paragraphs else text_content[:300])
 

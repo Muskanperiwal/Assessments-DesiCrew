@@ -68,7 +68,7 @@ class SupportRAGEngine:
 
     def __init__(self, docs_dir: Optional[Path] = None, chroma_dir: Optional[Path] = None):
         base_dir = getattr(settings, 'BASE_DIR', Path(__file__).resolve().parent.parent)
-        self.docs_dir = docs_dir or getattr(settings, 'DATA_DIR', base_dir / 'data') / 'knowledge_base'
+        self.docs_dir = docs_dir or getattr(settings, 'DATA_DIR', base_dir / 'data') / 'support_documents'
         self.fallback_docs_dir = getattr(settings, 'DATA_DIR', base_dir / 'data') / 'support_documents'
         self.chroma_dir = chroma_dir or getattr(settings, 'DATA_DIR', base_dir / 'data') / 'chroma_db'
         
@@ -106,20 +106,23 @@ class SupportRAGEngine:
         self._in_memory_chunks = self._parse_all_documents()
 
     def _parse_all_documents(self) -> List[DocumentChunk]:
-        """Parses documents from knowledge_base directory (or fallback support_documents)."""
+        """Parses documents from support_documents directory prioritizing PDF versions."""
         chunks: List[DocumentChunk] = []
         target_dir = self.docs_dir if self.docs_dir.exists() else self.fallback_docs_dir
 
         if not target_dir.exists():
-            logger.warning(f"Knowledge base directory does not exist: {target_dir}")
+            logger.warning(f"Support documents directory does not exist: {target_dir}")
             return chunks
 
-        for file_path in sorted(target_dir.iterdir()):
-            suffix = file_path.suffix.lower()
-            if suffix == '.pdf':
+        pdf_files = list(target_dir.glob('*.pdf'))
+        if pdf_files and pymupdf is not None:
+            for file_path in sorted(pdf_files):
                 chunks.extend(self._parse_pdf(file_path))
-            elif suffix in ('.md', '.txt'):
-                chunks.extend(self._parse_markdown(file_path))
+        else:
+            for file_path in sorted(target_dir.iterdir()):
+                suffix = file_path.suffix.lower()
+                if suffix in ('.md', '.txt'):
+                    chunks.extend(self._parse_markdown(file_path))
 
         return chunks
 

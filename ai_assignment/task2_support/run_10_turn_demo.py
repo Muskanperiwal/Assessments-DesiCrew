@@ -92,7 +92,7 @@ def run_10_turn_demonstration():
             topic_history.append(topic)
         if is_switch:
             topic_switches += 1
-        if "Avoiding repeating" in reply or "baseline policy" in reply:
+        if data.get('anti_repeat') or "Avoiding repeating" in reply or "baseline policy" in reply or "previous discussion" in reply:
             anti_repetition_triggers += 1
         if citation and ("Doc:" in citation or "Page:" in citation):
             citations_count += 1
@@ -107,7 +107,7 @@ def run_10_turn_demonstration():
         else:
             print("Context continuity    : Continuing within current dialogue topic")
 
-        if "Avoiding repeating" in reply or "baseline policy" in reply:
+        if data.get('anti_repeat') or "Avoiding repeating" in reply or "baseline policy" in reply or "previous discussion" in reply:
             print("Anti-repetition       : ACTIVE (suppressed duplicate boilerplate, delivered delta facts)")
 
         print(f"Document citation     : {citation}")
