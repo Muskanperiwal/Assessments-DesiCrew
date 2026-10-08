@@ -429,9 +429,6 @@
                         <button type="button" id="tabJsonBtn" onclick="switchResultTab('json')" class="result-tab-btn">
                             { } API Response JSON
                         </button>
-                        <button type="button" id="tabAllBtn" onclick="switchResultTab('all')" class="result-tab-btn">
-                            View All
-                        </button>
                     </div>
 
                     <!-- TAB 1: Main Extracted Fields Table (Full Width, Enterprise HITL Workspace) -->
@@ -1128,7 +1125,6 @@
             const tabExtracted = document.getElementById('tabExtractedBtn');
             const tabFlagging = document.getElementById('tabFlaggingBtn');
             const tabJson = document.getElementById('tabJsonBtn');
-            const tabAll = document.getElementById('tabAllBtn');
 
             const secExtracted = document.getElementById('extractedFieldsSection');
             const secFlagging = document.getElementById('flaggingReportSection');
@@ -1141,7 +1137,6 @@
             setTabState(tabExtracted, tabName === 'extracted');
             setTabState(tabFlagging, tabName === 'flagging', ' flex items-center gap-1.5');
             setTabState(tabJson, tabName === 'json');
-            setTabState(tabAll, tabName === 'all');
 
             if (tabName === 'extracted') {
                 if (secExtracted) secExtracted.classList.remove('hidden');
@@ -1154,10 +1149,6 @@
             } else if (tabName === 'json') {
                 if (secExtracted) secExtracted.classList.add('hidden');
                 if (secFlagging) secFlagging.classList.add('hidden');
-                if (secJson) secJson.classList.remove('hidden');
-            } else if (tabName === 'all') {
-                if (secExtracted) secExtracted.classList.remove('hidden');
-                if (secFlagging) secFlagging.classList.remove('hidden');
                 if (secJson) secJson.classList.remove('hidden');
             }
         }
