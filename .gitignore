@@ -44,3 +44,15 @@ scratch/
 tmp/
 staticfiles/
 media/
+
+# Deployment, Docker & Tunneling files (local only, excluded from git)
+Dockerfile*
+.dockerignore
+docker-compose*.yml
+Procfile
+build.sh
+start-tunnel.sh
+
+# Local images
+images/
+

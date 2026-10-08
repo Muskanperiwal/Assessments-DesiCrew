@@ -166,11 +166,25 @@ def api_support_chat(request: HttpRequest) -> JsonResponse:
     request.session['support_delivered_facts'] = delivered_facts
     request.session.modified = True
 
+    sources = []
+    for chunk in relevant_chunks[:3]:
+        excerpt = (chunk.get("text") or "").strip().replace("\n", " ")
+        if len(excerpt) > 280:
+            excerpt = excerpt[:277] + "…"
+        sources.append({
+            "citation": chunk.get("citation") or "",
+            "excerpt": excerpt,
+        })
+
     return JsonResponse({
         "reply": reply_text,
         "citation": primary_citation,
         "citations": all_citations,
+        "sources": sources,
         "topic": current_topic,
+        "previous_topic": active_topic if is_topic_switch else None,
+        "topics": topic_history,
+        "anti_repeat": already_delivered_count > 0,
         "is_topic_switch": is_topic_switch,
         "returning_to_previous_topic": returning_to_previous_topic,
         "turn_number": turn_number,

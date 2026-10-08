@@ -223,6 +223,10 @@
 
     .glass-composer:focus-within {
         border-color: rgba(20, 184, 166, 0.5) !important;
+        box-shadow: 0 0 0 3px var(--accent-soft) !important;
+    }
+
+    html[data-theme="dark"] .glass-composer:focus-within {
         box-shadow: 0 0 0 3px var(--accent-soft), 0 4px 20px rgba(0, 0, 0, 0.4) !important;
     }
 
@@ -471,14 +475,15 @@
         border-radius: 4px;
         color: var(--color-teal-hover);
     }
-    .prose pre {
-        background: #1e293b;
-        color: #e2e8f0;
+    .prose pre,
+    .code-surface {
+        background: #f8fafc;
+        color: #0f172a;
         padding: 0.875rem 1rem;
         border-radius: 0.65rem;
         overflow-x: auto;
         font-size: 0.8125rem;
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        border: 1px solid var(--color-border);
     }
     .prose table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: 0.8125rem; }
     .prose th, .prose td { border: 1px solid var(--color-border); padding: 0.45rem 0.65rem; text-align: left; }
@@ -488,8 +493,10 @@
         background: rgba(255, 255, 255, 0.08) !important;
         color: #2dd4bf !important;
     }
-    html[data-theme="dark"] .prose pre {
-        background: #020617 !important;
+    html[data-theme="dark"] .prose pre,
+    html[data-theme="dark"] .code-surface {
+        background: #0f172a !important;
+        color: #e2e8f0 !important;
         border-color: rgba(255, 255, 255, 0.1) !important;
     }
     html[data-theme="dark"] .prose th,
@@ -592,8 +599,110 @@
 
     html[data-theme="dark"] .text-amber-700,
     html[data-theme="dark"] .text-amber-800,
-    html[data-theme="dark"] .text-amber-900 {
+    html[data-theme="dark"] .text-amber-900,
+    html[data-theme="dark"] .text-amber-950 {
         color: #fbbf24 !important;
+    }
+
+    html[data-theme="dark"] .text-emerald-950 {
+        color: #6ee7b7 !important;
+    }
+
+    html[data-theme="dark"] .text-red-700,
+    html[data-theme="dark"] .text-red-800,
+    html[data-theme="dark"] .text-red-900 {
+        color: #fca5a5 !important;
+    }
+
+    .accent-panel {
+        background: var(--color-teal-soft);
+        border: 1px solid rgba(13, 148, 136, 0.28);
+        color: var(--color-text);
+    }
+
+    .status-live {
+        background: var(--color-emerald-soft);
+        color: #065f46;
+        border: 1px solid rgba(5, 150, 105, 0.28);
+    }
+
+    .status-warn {
+        background: rgba(245, 158, 11, 0.14);
+        color: #92400e;
+        border: 1px solid rgba(217, 119, 6, 0.28);
+    }
+
+    html[data-theme="dark"] .status-live {
+        color: #6ee7b7;
+        border-color: rgba(16, 185, 129, 0.35);
+    }
+
+    html[data-theme="dark"] .status-warn {
+        color: #fcd34d;
+        border-color: rgba(251, 191, 36, 0.35);
+    }
+
+    .chart-frame {
+        background: #ffffff;
+        border: 1px solid var(--color-border);
+    }
+
+    .msg-toolbar {
+        display: flex;
+        gap: 0.35rem;
+        margin-top: 0.65rem;
+    }
+
+    .msg-toolbar button {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        color: var(--color-text-secondary);
+        background: transparent;
+        border: 1px solid var(--color-border);
+        border-radius: 999px;
+        padding: 0.15rem 0.55rem;
+        cursor: pointer;
+    }
+
+    .msg-toolbar button:hover {
+        color: var(--color-text);
+        border-color: rgba(13, 148, 136, 0.4);
+    }
+
+    .schema-col {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        gap: 0.5rem;
+        text-align: left;
+        background: var(--card-item-bg);
+        border: 1px solid var(--card-item-border);
+        color: var(--color-text);
+        border-radius: 0.5rem;
+        padding: 0.2rem 0.45rem;
+        font-size: 10px;
+        cursor: pointer;
+    }
+
+    .schema-col:hover {
+        border-color: rgba(13, 148, 136, 0.45);
+    }
+
+    .field-edit {
+        width: 100%;
+        background: transparent;
+        color: var(--color-text);
+        border: 1px solid transparent;
+        border-radius: 0.4rem;
+        padding: 0.15rem 0.3rem;
+        font: inherit;
+    }
+
+    .field-edit:hover,
+    .field-edit:focus {
+        border-color: rgba(13, 148, 136, 0.45);
+        background: var(--color-surface);
+        outline: none;
     }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">

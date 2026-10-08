@@ -266,7 +266,7 @@ source .venv/bin/activate  # On Windows: .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
 # 3. Configure API credentials in .env
-echo 'GEMINI_API_KEY="your-gemini-key"' > ai_assignment/.env
+echo 'GEMINI_API_KEY="your-gemini-key"' > .env
 
 # 4. Run database migrations & start local server
 python ai_assignment/manage.py migrate

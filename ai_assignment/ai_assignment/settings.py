@@ -4,12 +4,13 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load environment variables from .env if present
+# Load .env from repo root (preferred) or ai_assignment/ (Docker / legacy)
 try:
     from dotenv import load_dotenv
-    env_file = BASE_DIR / '.env'
-    if env_file.exists():
-        load_dotenv(env_file)
+    for env_file in (BASE_DIR.parent / '.env', BASE_DIR / '.env'):
+        if env_file.exists():
+            load_dotenv(env_file)
+            break
 except ImportError:
     pass
 
@@ -147,11 +148,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 86400  # 1 day
 
-# AI Configuration (Groq OpenAI-compatible + Gemini)
-GROQ_API_KEY = os.getenv('GROQ_API_KEY', '')
-GROQ_BASE_URL = os.getenv('GROQ_BASE_URL', 'https://api.groq.com/openai/v1')
-GROQ_MODEL = os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile')
-
+# AI Configuration (Gemini)
 # Parse Gemini API Keys (Supports single GEMINI_API_KEY or comma-separated GEMINI_API_KEYS)
 def _load_gemini_keys():
     keys = []

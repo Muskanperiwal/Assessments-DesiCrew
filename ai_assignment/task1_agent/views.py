@@ -2,8 +2,6 @@
 Powered by Google Gemini SDK (google.generativeai) with automatic function calling,
 multi-key API rotation, Pandas execution, DuckDuckGo search, and executive summary synthesis.
 """
-import io
-import sys
 import json
 import logging
 import re
@@ -16,6 +14,8 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.views.decorators.http import require_http_methods
+
+from .analysis import INSIGHT_BUILDERS, json_records, markdown_table, run_user_code
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +31,7 @@ MODEL_CANDIDATES = [
 # ==============================================================================
 # GLOBAL DATAFRAME LOADING (Loaded once at server startup to prevent I/O bottlenecks)
 # ==============================================================================
-EXCEL_PATH = Path(settings.BASE_DIR) / 'Inventory-Records-Sample-Data.xlsx'
-if not EXCEL_PATH.exists():
-    EXCEL_PATH = Path(settings.BASE_DIR) / 'data' / 'Inventory-Records-Sample-Data.xlsx'
+EXCEL_PATH = Path(settings.BASE_DIR) / 'data' / 'Inventory-Records-Sample-Data.xlsx'
 
 try:
     # Header row is at index 5 in the sample dataset
@@ -62,7 +60,8 @@ DATASET_DTYPES_STR = df.dtypes.to_string() if not df.empty else "No columns load
 # Global tracking container for tools executed during the active request turn
 current_turn_artifacts = {
     "code_executed": None,
-    "search_query": None
+    "search_query": None,
+    "charts": [],
 }
 
 # ==============================================================================
@@ -70,47 +69,17 @@ current_turn_artifacts = {
 # ==============================================================================
 def execute_pandas_code(code: str) -> str:
     """
-    Safely executes LLM-generated Python pandas code against the loaded df using exec().
-    Captures standard output (sys.stdout) and returns it as a string.
-    Wrap in try/except to return runtime errors directly to the LLM for self-correction.
+    Executes LLM-generated Python against the loaded df.
+    pandas, numpy, matplotlib.pyplot (plt), and seaborn (sns) are available.
+    Charts are captured for the UI. Runtime errors are returned for self-correction.
     """
     global current_turn_artifacts
     current_turn_artifacts["code_executed"] = code
-
-    # Strip code block markdown ticks if passed
-    code_lines = [line for line in code.strip().split('\n') if not line.strip().startswith('```')]
-    clean_code = '\n'.join(code_lines).strip()
-
-    # Capture standard output
-    stdout_buf = io.StringIO()
-    old_stdout = sys.stdout
-    sys.stdout = stdout_buf
-
-    local_env = {
-        'df': df,
-        'pd': pd,
-        'np': np,
-    }
-
-    try:
-        # If the last line is a bare expression without assignment or print, automatically capture it
-        lines = clean_code.split('\n')
-        if lines and not lines[-1].startswith(' ') and not lines[-1].startswith('\t'):
-            last_line = lines[-1].strip()
-            if not (last_line.startswith('print') or '=' in last_line or last_line.startswith('import') or last_line.startswith('def ')):
-                lines[-1] = f"__res__ = ({last_line})\nif __res__ is not None: print(__res__)"
-                clean_code = '\n'.join(lines)
-
-        exec(clean_code, local_env, local_env)
-        sys.stdout = old_stdout
-        output = stdout_buf.getvalue().strip()
-        if not output:
-            output = "Execution completed successfully with no output."
-        return output
-    except Exception as e:
-        sys.stdout = old_stdout
-        err_msg = f"{type(e).__name__}: {str(e)}"
-        return f"Python Execution Error: {err_msg}. Please review the DataFrame columns and syntax, and try again."
+    result = run_user_code(df, code)
+    current_turn_artifacts["charts"].extend(result.get("charts") or [])
+    if result["ok"]:
+        return result["output"]
+    return result["output"] + " Please review the DataFrame columns and syntax, and try again."
 
 
 def search_web(query: str) -> str:
@@ -154,6 +123,7 @@ Dataset Columns and Types:
 
 Operational Rules:
 - For any numerical, statistical, or data-filtering question, you MUST call the execute_pandas_code tool. Write valid Python code. Always print your final result (e.g., print(df['Column'].sum())). NEVER hallucinate data.
+- matplotlib.pyplot is available as plt and seaborn as sns. You may chart with them. Do not call plt.show(). Print a one-line description of what the chart shows.
 - For definitions, supply chain metrics (e.g., Safety Stock, EOQ), or external industry context, you MUST call the search_web tool.
 - Synthesize the tool outputs into a clear, professional plain-English summary. Do not explain the Python code to the user."""
 
@@ -167,24 +137,23 @@ def fallback_pandas_response(message: str) -> dict:
     reply = ""
 
     if "low" in q or "reorder" in q or ("stock" in q and "alert" in q):
-        code = "print(df[['Product ID', 'Product Name', 'Hand-In-Stock', 'Number of Units Sold']].sort_values(by='Hand-In-Stock').head(10))"
-        out = execute_pandas_code(code)
+        code = "df.nsmallest(8, 'Hand-In-Stock')[['Product ID', 'Product Name', 'Hand-In-Stock', 'Number of Units Sold']]"
+        view = df.nsmallest(8, "Hand-In-Stock")
+        execute_pandas_code(code)
         reply = (
             "### Low stock and replenishment priority\n\n"
-            "Here are the items with the lowest current hand-in-stock levels requiring operational attention:\n\n"
-            f"```text\n{out}\n```\n\n"
-            "**Analyst Recommendations:**\n"
-            "- Items with single-digit units on hand should be prioritized for immediate purchase order requisition.\n"
-            "- Review historical lead times to establish safety stock buffers."
+            "Items with the lowest on-hand stock:\n\n"
+            + markdown_table(view, ["Product ID", "Product Name", "Hand-In-Stock", "Number of Units Sold"])
+            + "\n\nSingle-digit on-hand quantities should be first in the next purchase order."
         )
     elif "top" in q or "best" in q or "most sold" in q or "sales" in q:
-        code = "print(df[['Product ID', 'Product Name', 'Number of Units Sold', 'Cost Price Total (USD)']].sort_values(by='Number of Units Sold', ascending=False).head(5))"
-        out = execute_pandas_code(code)
+        code = "df.nlargest(5, 'Number of Units Sold')[['Product ID', 'Product Name', 'Number of Units Sold', 'Cost Price Total (USD)']]"
+        view = df.nlargest(5, "Number of Units Sold")
+        execute_pandas_code(code)
         reply = (
-            "### Top 5 performing products by sales volume\n\n"
-            "The top sold products identified across your inventory catalog:\n\n"
-            f"```text\n{out}\n```\n\n"
-            "**Key Findings:** These high-velocity SKUs represent your core revenue drivers. Ensure supply chain continuity to prevent stockouts."
+            "### Top products by units sold\n\n"
+            + markdown_table(view, ["Product ID", "Product Name", "Number of Units Sold", "Cost Price Total (USD)"])
+            + "\n\nThese high-velocity SKUs need uninterrupted supply."
         )
     elif "value" in q or "total" in q or "worth" in q or "summary" in q or "overview" in q:
         code = (
@@ -203,19 +172,21 @@ def fallback_pandas_response(message: str) -> dict:
             "- **Active Valuation:** Cumulative total cost value of inventory assets."
         )
     else:
-        code = "print(df.describe().to_string())"
-        out = execute_pandas_code(code)
+        code = "df.describe()"
+        execute_pandas_code(code)
         reply = (
-            f"### Inventory dataset analysis\n\n"
-            f"Found **{len(df)} products** in the loaded dataset.\n\n"
-            f"```text\n{out}\n```\n\n"
-            "> *Note: Add your Gemini API keys to `.env` to enable live Gemini AI function calling.*"
+            f"### Inventory dataset\n\n"
+            f"Found **{len(df)} products**.\n\n"
+            + markdown_table(df, list(df.columns), limit=6)
+            + "\n\nAsk about low stock, top sellers, valuation, or sell-through. "
+            "The smart analyses on the left also draw charts."
         )
 
     return {
         "reply": reply,
         "code_executed": code,
-        "search_query": None
+        "search_query": None,
+        "charts": current_turn_artifacts.get("charts") or [],
     }
 
 
@@ -260,7 +231,7 @@ def api_chat(request):
     Returns JsonResponse with reply, code_executed, and search_query.
     """
     global current_turn_artifacts
-    current_turn_artifacts = {"code_executed": None, "search_query": None}
+    current_turn_artifacts = {"code_executed": None, "search_query": None, "charts": []}
 
     try:
         body = json.loads(request.body.decode('utf-8'))
@@ -319,7 +290,8 @@ def api_chat(request):
                 return JsonResponse({
                     "reply": reply_text,
                     "code_executed": current_turn_artifacts["code_executed"],
-                    "search_query": current_turn_artifacts["search_query"]
+                    "search_query": current_turn_artifacts["search_query"],
+                    "charts": current_turn_artifacts["charts"],
                 })
 
             except Exception as model_err:
@@ -352,29 +324,12 @@ def api_playground(request):
     if not code:
         return JsonResponse({"error": "No Python code provided"}, status=400)
 
-    stdout_buf = io.StringIO()
-    old_stdout = sys.stdout
-    sys.stdout = stdout_buf
-
-    local_env = {'df': df, 'pd': pd, 'np': np}
-
-    try:
-        lines = code.split('\n')
-        if lines and not lines[-1].startswith(' ') and not lines[-1].startswith('\t'):
-            last_line = lines[-1].strip()
-            if not (last_line.startswith('print') or '=' in last_line or last_line.startswith('import') or last_line.startswith('def ')):
-                lines[-1] = f"__res__ = ({last_line})\nif __res__ is not None: print(__res__)"
-                code = '\n'.join(lines)
-
-        exec(code, local_env, local_env)
-        sys.stdout = old_stdout
-        output = stdout_buf.getvalue().strip()
-        if not output:
-            output = "Code executed successfully with no printed output."
-        return JsonResponse({"status": "success", "output": output})
-    except Exception as e:
-        sys.stdout = old_stdout
-        return JsonResponse({"status": "error", "output": f"{type(e).__name__}: {str(e)}"})
+    result = run_user_code(df, code)
+    return JsonResponse({
+        "status": "success" if result["ok"] else "error",
+        "output": result["output"],
+        "charts": result["charts"],
+    })
 
 
 @require_http_methods(["GET"])
@@ -394,3 +349,39 @@ def api_data_info(request):
         "dtypes": dtypes_dict,
         "preview": preview_records
     })
+
+
+@require_http_methods(["GET"])
+def api_records(request):
+    """Full inventory sheet, read-only, for the data viewer."""
+    if df.empty:
+        return JsonResponse({"error": "Inventory sheet is empty"}, status=404)
+    return JsonResponse({
+        "dataset_name": EXCEL_PATH.name,
+        "row_count": len(df),
+        "columns": list(df.columns),
+        "rows": json_records(df),
+    })
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_insight(request):
+    """Ready-made analysis: written findings plus a matplotlib/seaborn chart."""
+    try:
+        body = json.loads(request.body.decode("utf-8"))
+        key = (body.get("insight") or "").strip()
+    except Exception:
+        return JsonResponse({"error": "Invalid JSON body"}, status=400)
+
+    builder = INSIGHT_BUILDERS.get(key)
+    if builder is None:
+        return JsonResponse({"error": "Unknown analysis"}, status=400)
+    if df.empty:
+        return JsonResponse({"error": "Inventory sheet is empty"}, status=404)
+    try:
+        payload = builder(df)
+    except Exception as exc:
+        logger.exception("Insight %s failed", key)
+        return JsonResponse({"error": str(exc)}, status=500)
+    return JsonResponse(payload)

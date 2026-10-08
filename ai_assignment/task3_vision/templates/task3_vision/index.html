@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document scan · Task 3</title>
+    {% include 'partials/tailwind_setup.html' %}
     <script src="https://cdn.tailwindcss.com"></script>
     {% include 'partials/app_theme.html' %}
     <style>
@@ -14,7 +15,6 @@
         .task3-table .data-table { font-size: 0.8125rem; }
         .task3-table .data-table th { color: var(--color-text); }
         .task3-table .data-table td { color: var(--color-text); }
-        #jsonOutput { color: #d1fae5; }
         #errorState {
             color: #7f1d1d;
             background: #fef2f2;
@@ -61,20 +61,24 @@
                                 <button type="button" onclick="clearSelectedFile(event)" class="text-[var(--color-text-muted)] hover:text-red-600" aria-label="Clear">&times;</button>
                             </div>
                         </div>
-                        <button type="submit" id="submitBtn" class="btn btn-primary mt-3 w-full">Process document</button>
+                        <div class="mt-3 flex gap-2">
+                            <button type="submit" id="submitBtn" class="btn btn-primary flex-1">Process document</button>
+                            <button type="button" id="stopBtn" onclick="stopRequest()" class="hidden btn bg-red-600 hover:bg-red-500 text-white shrink-0">Stop</button>
+                        </div>
                     </form>
                 </div>
 
                 {% if sample_files %}
                 <div class="glass-panel rounded-2xl p-4">
                     <p class="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)] mb-2">Sample corpus ({{ sample_files|length }})</p>
-                    <select id="sampleSelect" onchange="runSampleTest(this.value)" class="w-full text-sm rounded-lg border border-black/10 dark:border-white/15 bg-white/80 dark:bg-slate-800 px-3 py-2 text-[var(--color-text)]">
+                    <select id="sampleSelect" class="w-full text-sm rounded-lg border border-black/10 dark:border-white/15 bg-white/80 dark:bg-slate-800 px-3 py-2 text-[var(--color-text)]">
                         <option value="">Choose a sample…</option>
                         {% for sf in sample_files %}
                         <option value="{{ sf }}">{{ sf }}</option>
                         {% endfor %}
                     </select>
-                    <button type="button" onclick="runBatchPipeline()" class="btn btn-secondary btn-sm mt-3 w-full">Run all {{ sample_files|length }} samples</button>
+                    <button type="button" onclick="runSelectedSample()" class="btn btn-secondary btn-sm mt-3 w-full">Run selected sample</button>
+                    <button type="button" onclick="runBatchPipeline()" id="batchBtn" class="btn btn-ghost btn-sm mt-2 w-full">Run all {{ sample_files|length }} samples</button>
                 </div>
                 {% endif %}
 
@@ -85,6 +89,13 @@
 
             <div class="lg:col-span-8 space-y-3 min-h-[320px]">
 
+                <div id="docPreview" class="hidden glass-panel rounded-2xl p-4">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)] mb-2">Source document</p>
+                    <img id="previewImage" alt="Uploaded document" class="hidden max-h-72 mx-auto rounded-lg border border-black/10">
+                    <iframe id="previewFrame" title="PDF preview" class="hidden w-full h-72 rounded-lg border border-black/10 bg-white"></iframe>
+                    <p id="previewNote" class="text-xs text-[var(--color-text-secondary)] mt-2"></p>
+                </div>
+
                 <div id="errorState" class="hidden rounded-2xl p-4 border border-red-500/30 bg-red-500/10 text-sm text-red-900 dark:text-red-200"></div>
 
                 <div id="emptyState" class="glass-panel rounded-2xl p-8 text-center">
@@ -93,11 +104,12 @@
                 </div>
 
                 <div id="loadingIndicator" class="hidden glass-panel rounded-2xl p-8 text-center">
-                    <svg class="animate-spin h-8 w-8 text-teal-700 dark:text-teal-400 mx-auto" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                    <svg class="animate-spin h-8 w-8 text-[var(--color-teal)] mx-auto" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                     </svg>
-                    <p class="text-sm font-medium mt-3 text-[var(--color-text)]">Running vision extraction…</p>
+                    <p id="loadingLabel" class="text-sm font-medium mt-3 text-[var(--color-text)]">Running vision extraction…</p>
+                    <button type="button" onclick="stopRequest()" class="mt-4 btn btn-sm bg-red-600 hover:bg-red-500 text-white">Stop</button>
                 </div>
 
                 <div id="batchSummary" class="hidden glass-panel rounded-2xl p-4 task3-table"></div>
@@ -148,11 +160,11 @@
                             <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
                                 <p class="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">API response JSON</p>
                                 <div class="flex gap-1">
-                                    <button type="button" onclick="copyFullResponse()" class="btn btn-ghost btn-sm !py-1 !px-2">Copy all</button>
+                                    <button type="button" id="copyJsonBtn" onclick="copyFullResponse()" class="btn btn-ghost btn-sm !py-1 !px-2">Copy all</button>
                                     <button type="button" onclick="downloadFullResponse()" class="btn btn-ghost btn-sm !py-1 !px-2">Download</button>
                                 </div>
                             </div>
-                            <pre class="flex-1 text-xs leading-relaxed p-3 rounded-xl bg-slate-900 overflow-auto max-h-[340px]"><code id="jsonOutput"></code></pre>
+                            <pre class="code-surface flex-1 text-xs leading-relaxed p-3 rounded-xl overflow-auto max-h-[340px]"><code id="jsonOutput"></code></pre>
                         </div>
                     </div>
 
@@ -185,6 +197,10 @@
 
         let currentResultJson = null;
         let selectedFile = null;
+        let requestAbortController = null;
+        let batchCache = {};
+        let stageTimer = null;
+        let previewObjectUrl = null;
 
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
@@ -195,6 +211,54 @@
         const batchSummary = document.getElementById('batchSummary');
         const errorState = document.getElementById('errorState');
         const loadingIndicator = document.getElementById('loadingIndicator');
+        const submitBtn = document.getElementById('submitBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const batchBtn = document.getElementById('batchBtn');
+
+        function isAbortError(err) {
+            return err && (err.name === 'AbortError' || err.message === 'The user aborted a request.');
+        }
+
+        function startStages(kind) {
+            const el = document.getElementById('loadingLabel');
+            const stages = kind === 'batch'
+                ? ['Reading the sample corpus…', 'Classifying each file…', 'Scoring field confidence…']
+                : ['Uploading…', 'Classifying the document…', 'Extracting fields…'];
+            let i = 0;
+            if (el) el.textContent = stages[0];
+            clearInterval(stageTimer);
+            stageTimer = setInterval(() => {
+                i = Math.min(i + 1, stages.length - 1);
+                if (el) el.textContent = stages[i];
+            }, 1400);
+        }
+        function stopStages() { clearInterval(stageTimer); }
+
+        function showSourcePreview(url, label, isPdf) {
+            const box = document.getElementById('docPreview');
+            const img = document.getElementById('previewImage');
+            const frame = document.getElementById('previewFrame');
+            const note = document.getElementById('previewNote');
+            box.classList.remove('hidden');
+            note.textContent = label || '';
+            if (isPdf) {
+                img.classList.add('hidden');
+                img.removeAttribute('src');
+                frame.classList.remove('hidden');
+                frame.src = url;
+            } else {
+                frame.classList.add('hidden');
+                frame.removeAttribute('src');
+                img.classList.remove('hidden');
+                img.src = url;
+            }
+        }
+
+        function setBusy(busy) {
+            if (submitBtn) submitBtn.disabled = busy;
+            if (batchBtn) batchBtn.disabled = busy;
+            if (stopBtn) stopBtn.classList.toggle('hidden', !busy);
+        }
 
         /** Only one main panel visible: idle | loading | results | error */
         function setPanelState(state) {
@@ -209,6 +273,7 @@
                 show(errorState, false);
                 if (state !== 'idle') show(emptyState, false);
             }
+            setBusy(state === 'loading');
         }
 
         function getSelectedUploadFile() {
@@ -253,6 +318,10 @@
             selectedFile = file;
             selectedFileName.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
             selectedFileInfo.classList.remove('hidden');
+            const isPdf = (file.type || '').includes('pdf') || /\.pdf$/i.test(file.name);
+            if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+            previewObjectUrl = URL.createObjectURL(file);
+            showSourcePreview(previewObjectUrl, file.name, isPdf);
             errorState.classList.add('hidden');
             errorState.textContent = '';
             if (!loadingIndicator.classList.contains('hidden')) return;
@@ -266,6 +335,7 @@
             selectedFile = null;
             fileInput.value = '';
             selectedFileInfo.classList.add('hidden');
+            document.getElementById('docPreview').classList.add('hidden');
         }
 
         async function handleFormSubmit(e) {
@@ -280,62 +350,94 @@
             await submitPayload(formData);
         }
 
+        function runSelectedSample() {
+            const name = document.getElementById('sampleSelect')?.value || '';
+            if (!name) {
+                showError('Choose a sample, then run it.');
+                return;
+            }
+            if (batchCache[name]) {
+                const isPdf = /\.pdf$/i.test(name);
+                showSourcePreview('/task3/api/sample/?name=' + encodeURIComponent(name), name, isPdf);
+                renderResults(batchCache[name]);
+                return;
+            }
+            runSampleTest(name);
+        }
+
         async function runSampleTest(sampleName) {
             if (!sampleName) return;
+            const isPdf = /\.pdf$/i.test(sampleName);
+            showSourcePreview('/task3/api/sample/?name=' + encodeURIComponent(sampleName), sampleName, isPdf);
             const formData = new FormData();
             formData.append('sample_filename', sampleName);
             await submitPayload(formData);
         }
 
         async function submitPayload(formData) {
-            const submitBtn = document.getElementById('submitBtn');
+            if (requestAbortController) return;
 
             batchSummary.classList.add('hidden');
             setPanelState('loading');
-            if (submitBtn) submitBtn.disabled = true;
+            startStages('one');
+            requestAbortController = new AbortController();
 
             try {
                 const response = await fetch('/task3/api/process/', {
                     method: 'POST',
                     headers: { 'X-CSRFToken': getCookie('csrftoken') || '' },
-                    body: formData
+                    body: formData,
+                    signal: requestAbortController.signal
                 });
 
                 const data = await response.json().catch(() => ({}));
                 if (!response.ok) {
                     const hint = (data.details || data.error || `HTTP ${response.status}`);
                     if (hint.includes('GEMINI') || hint.includes('API')) {
-                        throw new Error(hint + ' — set GEMINI_API_KEY in ai_assignment/.env and restart the server.');
+                        throw new Error(hint + ' — set GEMINI_API_KEY in .env (project root) and restart the server.');
                     }
                     throw new Error(hint);
                 }
 
                 renderResults(data);
             } catch (err) {
-                showError('Processing failed: ' + err.message);
+                if (isAbortError(err)) {
+                    showError('Stopped by user.');
+                } else {
+                    showError('Processing failed: ' + err.message);
+                }
             } finally {
+                stopStages();
+                requestAbortController = null;
                 if (!errorState.classList.contains('hidden')) {
-                    /* showError already set state */
+                    setBusy(false);
                 } else if (resultsContainer.classList.contains('hidden')) {
                     setPanelState('idle');
+                } else {
+                    setBusy(false);
                 }
-                if (submitBtn) submitBtn.disabled = false;
             }
         }
 
         async function runBatchPipeline() {
+            if (requestAbortController) return;
+
             batchSummary.classList.add('hidden');
             setPanelState('loading');
+            startStages('batch');
+            requestAbortController = new AbortController();
 
             try {
                 const response = await fetch('/task3/api/pipeline/', {
                     method: 'POST',
-                    headers: { 'X-CSRFToken': getCookie('csrftoken') || '' }
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') || '' },
+                    signal: requestAbortController.signal
                 });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || 'Batch request failed');
 
                 const docs = data.documents || {};
+                batchCache = docs;
                 const failures = data.failures || [];
                 const flagged = (data.flagging_report && data.flagging_report.total_flagged_fields) || 0;
 
@@ -364,9 +466,14 @@
                         const raw = btn.getAttribute('data-sample');
                         const sample = raw ? decodeURIComponent(raw) : '';
                         if (sample) {
-                            runSampleTest(sample);
                             const sel = document.getElementById('sampleSelect');
                             if (sel) sel.value = sample;
+                            if (batchCache[sample]) {
+                                showSourcePreview('/task3/api/sample/?name=' + encodeURIComponent(sample), sample, /\.pdf$/i.test(sample));
+                                renderResults(batchCache[sample]);
+                            } else {
+                                runSampleTest(sample);
+                            }
                         }
                     });
                 });
@@ -376,11 +483,22 @@
                 else if (failures.length) showError('All samples failed. Check GEMINI_API_KEY and server logs.');
                 else setPanelState('idle');
             } catch (err) {
-                showError('Batch failed: ' + err.message);
+                if (isAbortError(err)) {
+                    showError('Stopped by user.');
+                } else {
+                    showError('Batch failed: ' + err.message);
+                }
             } finally {
-                if (!errorState.classList.contains('hidden')) return;
+                stopStages();
+                requestAbortController = null;
+                if (!errorState.classList.contains('hidden')) {
+                    setBusy(false);
+                    return;
+                }
                 if (resultsContainer.classList.contains('hidden') && batchSummary.classList.contains('hidden')) {
                     setPanelState('idle');
+                } else {
+                    setBusy(false);
                 }
             }
         }
@@ -435,12 +553,17 @@
                 const isRedacted = String(val).includes('[Aadhaar Redacted]');
 
                 const tr = document.createElement('tr');
+                if (isFlagged) tr.className = 'bg-amber-500/10';
+                const status = isFlagged
+                    ? '<span class="status-warn text-xs font-semibold px-1.5 py-0.5 rounded">Review</span>'
+                    : '<span class="status-live text-xs font-semibold px-1.5 py-0.5 rounded">OK</span>';
                 tr.innerHTML = `
                     <td class="font-semibold">${escapeHtml(key)}</td>
-                    <td class="${isRedacted ? 'text-amber-800 dark:text-amber-200 font-medium' : ''}">${val !== null && val !== undefined ? escapeHtml(String(val)) : '<span class="italic text-[var(--color-text-muted)]">—</span>'}</td>
+                    <td class="${isRedacted ? 'font-medium' : ''}"><input class="field-edit" data-field="${escapeHtml(key)}" value="${val !== null && val !== undefined ? escapeHtml(String(val)) : ''}"></td>
                     <td class="font-mono">${(score * 100).toFixed(0)}%</td>
-                    <td>${isFlagged ? '<span class="text-amber-700 dark:text-amber-300 text-xs font-semibold">Review</span>' : '<span class="text-emerald-700 dark:text-emerald-400 text-xs font-semibold">OK</span>'}</td>
+                    <td class="field-status">${status}</td>
                 `;
+                tr.querySelector('input')?.addEventListener('change', (ev) => correctField(key, ev.target.value, tr));
                 tableBody.appendChild(tr);
             });
 
@@ -466,27 +589,11 @@
                 : 'Straight-through';
 
             if (flaggedList.length > 0) {
-                const rows = flaggedList.map(f => `
-                    <tr>
-                        <td class="font-semibold">${escapeHtml(f.field_name)}</td>
-                        <td>${escapeHtml(String(f.value ?? '—'))}</td>
-                        <td class="font-mono">${((f.confidence_score || 0) * 100).toFixed(0)}%</td>
-                    </tr>
-                `).join('');
-
-                flaggingBox.className = 'rounded-2xl p-4 border border-amber-500/25 bg-amber-500/8';
-                flaggingBox.innerHTML = `
-                    <p class="font-semibold text-amber-950 dark:text-amber-100 text-sm mb-2">Human review queue (${flaggedList.length})</p>
-                    <div class="overflow-x-auto rounded-xl glass-inset task3-table">
-                        <table class="data-table">
-                            <thead><tr><th>Field</th><th>Value</th><th>Score</th></tr></thead>
-                            <tbody>${rows}</tbody>
-                        </table>
-                    </div>
-                `;
+                flaggingBox.className = 'rounded-2xl p-4 border status-warn text-sm';
+                flaggingBox.innerHTML = `<p class="font-semibold">Human review: ${flaggedList.length} field${flaggedList.length === 1 ? '' : 's'}. Edit the highlighted rows in the table. A correction clears that field from the queue.</p>`;
             } else {
-                flaggingBox.className = 'rounded-2xl p-4 border border-emerald-600/25 bg-emerald-600/8';
-                flaggingBox.innerHTML = `<p class="font-semibold text-emerald-950 dark:text-emerald-100 text-sm">All extracted fields meet the ${THRESHOLD} confidence threshold.</p>`;
+                flaggingBox.className = 'rounded-2xl p-4 border status-live text-sm';
+                flaggingBox.innerHTML = `<p class="font-semibold">All extracted fields meet the ${THRESHOLD} confidence threshold.</p>`;
             }
 
             document.getElementById('thresholdNote').textContent = report.threshold_rationale || '';
@@ -503,9 +610,55 @@
                 .replace(/"/g, '&quot;');
         }
 
+        function correctField(key, value, row) {
+            if (!currentResultJson) return;
+            const jd = currentResultJson.json_data || (currentResultJson.json_data = {});
+            const extracted = jd.extracted_data || jd.fields;
+            if (!extracted || !(key in extracted)) return;
+            const item = extracted[key];
+            if (item && typeof item === 'object' && 'value' in item) {
+                item.value = value;
+                item.corrected = true;
+                item.confidence_score = 1;
+            } else {
+                extracted[key] = value;
+            }
+            const report = currentResultJson.flagging_report;
+            if (report && Array.isArray(report.flagged_fields)) {
+                report.flagged_fields = report.flagged_fields.filter((f) => f.field_name !== key);
+                report.flagged_count = report.flagged_fields.length;
+                report.needs_human_review = report.flagged_fields.length > 0;
+            }
+            jd.needs_human_review = report ? report.needs_human_review : false;
+            row.className = '';
+            const status = row.querySelector('.field-status');
+            if (status) status.innerHTML = '<span class="status-live text-xs font-semibold px-1.5 py-0.5 rounded">Corrected</span>';
+            const scoreCell = row.children[2];
+            if (scoreCell) scoreCell.textContent = '100%';
+            document.getElementById('jsonOutput').textContent = JSON.stringify(currentResultJson, null, 2);
+            const left = (report && report.flagged_fields) ? report.flagged_fields.length : 0;
+            const flaggingBox = document.getElementById('flaggingBox');
+            const statFlaggedBadge = document.getElementById('statFlaggedBadge');
+            if (left === 0) {
+                flaggingBox.className = 'rounded-2xl p-4 border status-live text-sm';
+                flaggingBox.innerHTML = '<p class="font-semibold">Corrections saved in this session. Every field is now above the threshold.</p>';
+                statFlaggedBadge.className = 'px-2.5 py-1 rounded-lg border status-live font-mono';
+                statFlaggedBadge.textContent = 'Straight-through';
+            } else {
+                flaggingBox.innerHTML = `<p class="font-semibold">Human review: ${left} field${left === 1 ? '' : 's'} still open. Edit the highlighted rows.</p>`;
+                statFlaggedBadge.innerHTML = `HITL <strong>${left}</strong>`;
+            }
+        }
+
         function copyFullResponse() {
             if (!currentResultJson) return;
-            navigator.clipboard.writeText(JSON.stringify(currentResultJson, null, 2)).catch(() => alert('Copy failed'));
+            const btn = document.getElementById('copyJsonBtn');
+            navigator.clipboard.writeText(JSON.stringify(currentResultJson, null, 2)).then(() => {
+                if (btn) {
+                    btn.textContent = 'Copied';
+                    setTimeout(() => { btn.textContent = 'Copy all'; }, 1200);
+                }
+            }).catch(() => alert('Copy failed'));
         }
 
         function downloadFullResponse() {

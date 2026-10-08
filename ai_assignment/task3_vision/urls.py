@@ -9,6 +9,7 @@ urlpatterns = [
     # Primary requested routes
     path("", views.upload_ui, name="upload_ui"),
     path("api/process/", views.api_process_document, name="api_process_document"),
+    path("api/sample/", views.api_sample_file, name="api_sample_file"),
 
     # Aliases for backward compatibility
     path("api/upload/", views.api_process_document, name="api_upload_file"),

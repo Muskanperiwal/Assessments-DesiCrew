@@ -6,9 +6,10 @@ compliance flagging reports.
 """
 
 import logging
+import mimetypes
 from pathlib import Path
 from django.conf import settings
-from django.http import JsonResponse
+from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -104,6 +105,22 @@ def api_process_document(request):
 
 # Aliases for backwards compatibility with previous test suites
 api_upload_file = api_process_document
+
+
+def _sample_dir() -> Path:
+    return getattr(settings, "DATA_DIR", Path(settings.BASE_DIR) / "data") / "sample_documents"
+
+
+@require_http_methods(["GET"])
+def api_sample_file(request):
+    """Serve one sample image or PDF for the side-by-side preview."""
+    name = Path(request.GET.get("name") or "").name
+    root = _sample_dir().resolve()
+    path = (root / name).resolve()
+    if not name or root not in path.parents or not path.is_file():
+        raise Http404("Sample not found")
+    content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+    return FileResponse(path.open("rb"), content_type=content_type)
 
 
 @csrf_exempt

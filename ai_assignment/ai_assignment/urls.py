@@ -19,7 +19,6 @@ def home_view(request):
     
     context = {
         'gemini_active': bool(getattr(settings, 'GEMINI_API_KEY', '')),
-        'groq_active': bool(getattr(settings, 'GROQ_API_KEY', '')),
         'dataset_exists': dataset_file,
         'knowledge_docs_count': support_docs,
         'sample_docs_count': sample_docs,

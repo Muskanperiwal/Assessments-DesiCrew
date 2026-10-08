@@ -4,29 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventory Analyst</title>
+    {% include 'partials/tailwind_setup.html' %}
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     {% include 'partials/app_theme.html' %}
     <style>
-        .playground-card {
-            background: linear-gradient(135deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.88));
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-        }
-
-        .details-glass summary {
-            cursor: pointer;
-            list-style: none;
-        }
+        #chatMessages { scrollbar-width: thin; scrollbar-color: rgba(100, 116, 139, 0.35) transparent; }
+        .details-glass summary { cursor: pointer; list-style: none; }
         .details-glass summary::-webkit-details-marker { display: none; }
-
-        #chatMessages {
-            scrollbar-width: thin;
-            scrollbar-color: rgba(100, 116, 139, 0.25) transparent;
-        }
-
-        @media (max-width: 768px) {
-            #sidebar {
+        #messageInput { resize: none; max-height: 8rem; }
         @media (max-width: 768px) {
             #sidebar {
                 position: fixed;
@@ -34,18 +20,13 @@
                 height: 100%;
                 z-index: 40;
             }
-            #sidebar.sidebar-hidden {
-                transform: translateX(-100%);
-            }
+            #sidebar.sidebar-hidden { transform: translateX(-100%); }
         }
     </style>
 </head>
 <body class="app-theme min-h-screen flex flex-col antialiased app-bg">
-
     <div class="flex h-screen overflow-hidden">
-
         <aside id="sidebar" class="w-80 glass-panel border-r border-white/60 flex flex-col flex-shrink-0 transition-transform duration-300 z-30">
-
             <div class="p-4 border-b border-black/5 flex items-center justify-between">
                 <div class="flex items-center gap-2.5 min-w-0">
                     <div class="w-8 h-8 rounded-xl avatar-ai flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">AI</div>
@@ -54,21 +35,18 @@
                         <p class="text-[11px] text-[var(--text-muted)]">Task 1 workspace</p>
                     </div>
                 </div>
-                <button type="button" onclick="clearChat()" title="New Chat" class="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/5 rounded-lg transition-colors flex-shrink-0">
+                <button type="button" onclick="clearChat()" title="New chat" class="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/5 rounded-lg transition-colors flex-shrink-0">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 </button>
             </div>
 
             <div class="flex-1 overflow-y-auto p-4 space-y-4">
-
                 <div class="glass-inset rounded-2xl p-3.5">
                     <div class="flex items-center justify-between mb-2 gap-2">
                         <span class="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Active dataset</span>
-                        <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-800 border border-emerald-500/20">Live</span>
+                        <span class="status-live text-[10px] font-medium px-2 py-0.5 rounded-full">Live</span>
                     </div>
-
                     <p class="text-sm font-medium text-[var(--text-primary)] truncate mb-2" title="{{ dataset_name }}">{{ dataset_name|default:"Inventory-Records-Sample-Data.xlsx" }}</p>
-
                     <div class="grid grid-cols-2 gap-2 mb-2">
                         <div class="rounded-xl px-2.5 py-2 bg-white/50 border border-black/5">
                             <span class="text-[10px] text-[var(--text-muted)] block">Rows</span>
@@ -79,7 +57,6 @@
                             <span class="font-semibold text-sm text-[var(--text-primary)]">{{ column_count }}</span>
                         </div>
                     </div>
-
                     <div class="grid grid-cols-1 gap-1.5 text-xs text-[var(--text-secondary)] mb-2">
                         <div class="flex justify-between gap-2 px-2 py-1.5 rounded-lg bg-white/40">
                             <span class="text-[var(--text-muted)]">Valuation</span>
@@ -90,72 +67,70 @@
                             <span class="font-semibold text-[var(--text-primary)]">{{ total_stock|default:"—" }}</span>
                         </div>
                     </div>
-
+                    <button type="button" onclick="openDataViewer()" class="btn btn-primary btn-sm w-full mb-2">View original data</button>
                     <details class="text-[11px] text-[var(--text-secondary)]">
-                        <summary class="cursor-pointer font-medium text-teal-700 hover:text-teal-800 py-1">Schema & types</summary>
+                        <summary class="cursor-pointer font-medium text-[var(--color-teal)] py-1">Schema — click a column to insert it</summary>
                         <div class="mt-1.5 space-y-1 max-h-36 overflow-y-auto pr-0.5">
                             {% for col in columns %}
-                            <div class="flex justify-between items-center gap-2 bg-white/50 px-2 py-1 rounded-lg border border-black/5 text-[10px]">
-                                <span class="font-mono text-[var(--text-primary)] truncate">{{ col.name }}</span>
+                            <button type="button" class="schema-col" onclick="insertColumn('{{ col.name|escapejs }}')">
+                                <span class="font-mono truncate">{{ col.name }}</span>
                                 <span class="text-[var(--text-muted)] font-mono flex-shrink-0">{{ col.dtype }}</span>
-                            </div>
+                            </button>
                             {% endfor %}
                         </div>
                     </details>
                 </div>
 
-                <div class="playground-card rounded-2xl p-3.5 text-white shadow-lg">
-                    <div class="flex items-center justify-between mb-1">
-                        <h3 class="font-semibold text-xs">Python playground</h3>
-                        <span class="text-[10px] font-mono text-white/70">df · pd · np</span>
+                <div>
+                    <span class="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)] block mb-1 px-0.5">Smart analyses</span>
+                    <p class="text-[11px] text-[var(--text-muted)] mb-2 px-0.5">One click. Chart plus a written read of the numbers.</p>
+                    <div class="space-y-1.5">
+                        <button type="button" onclick="runInsight('low_stock')" class="faq-btn w-full text-left p-2.5 rounded-xl text-xs">Replenishment priority</button>
+                        <button type="button" onclick="runInsight('top_sellers')" class="faq-btn w-full text-left p-2.5 rounded-xl text-xs">Top sellers</button>
+                        <button type="button" onclick="runInsight('abc')" class="faq-btn w-full text-left p-2.5 rounded-xl text-xs">ABC valuation</button>
+                        <button type="button" onclick="runInsight('sell_through')" class="faq-btn w-full text-left p-2.5 rounded-xl text-xs">Sell-through</button>
+                        <button type="button" onclick="runInsight('price_velocity')" class="faq-btn w-full text-left p-2.5 rounded-xl text-xs">Price versus velocity</button>
                     </div>
-                    <p class="text-[11px] text-white/75 leading-relaxed mb-2.5">Run custom Pandas against the in-memory dataframe.</p>
-                    <button type="button" onclick="openPlayground()" class="w-full py-2 bg-white/15 hover:bg-white/25 border border-white/20 text-white font-medium text-xs rounded-xl transition-colors">
-                        Open playground
-                    </button>
                 </div>
 
                 <div>
-                    <span class="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)] block mb-2 px-0.5">Suggestions</span>
+                    <span class="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)] block mb-2 px-0.5">Ask the analyst</span>
                     <div class="space-y-1.5">
-                        <button type="button" onclick="sendPrompt('Show low-stock items requiring replenishment priority')" class="faq-btn w-full text-left p-2.5 rounded-xl text-xs transition-all">Low stock & replenishment</button>
-                        <button type="button" onclick="sendPrompt('Which are the top 5 products by number of units sold?')" class="faq-btn w-full text-left p-2.5 rounded-xl text-xs transition-all">Top 5 selling SKUs</button>
-                        <button type="button" onclick="sendPrompt('Calculate total inventory valuation and summary statistics')" class="faq-btn w-full text-left p-2.5 rounded-xl text-xs transition-all">Catalog valuation</button>
-                        <button type="button" onclick="sendPrompt('What is Safety Stock and how should we calculate it for our inventory?')" class="faq-btn w-full text-left p-2.5 rounded-xl text-xs transition-all">Safety stock formula</button>
-                        <button type="button" onclick="sendPrompt('Perform an ABC Pareto classification based on inventory total cost')" class="faq-btn w-full text-left p-2.5 rounded-xl text-xs transition-all">ABC Pareto analysis</button>
+                        <button type="button" onclick="sendPrompt('Show low-stock items requiring replenishment priority')" class="faq-btn w-full text-left p-2.5 rounded-xl text-xs">Low stock question</button>
+                        <button type="button" onclick="sendPrompt('Which are the top 5 products by number of units sold?')" class="faq-btn w-full text-left p-2.5 rounded-xl text-xs">Top 5 selling SKUs</button>
+                        <button type="button" onclick="sendPrompt('Calculate total inventory valuation and summary statistics')" class="faq-btn w-full text-left p-2.5 rounded-xl text-xs">Catalog valuation</button>
+                        <button type="button" onclick="sendPrompt('What is Safety Stock and how should we calculate it for our inventory?')" class="faq-btn w-full text-left p-2.5 rounded-xl text-xs">Safety stock formula</button>
+                        <button type="button" onclick="sendPrompt('Perform an ABC Pareto classification based on inventory total cost')" class="faq-btn w-full text-left p-2.5 rounded-xl text-xs">Ask for Pareto</button>
                     </div>
                 </div>
-            </div>
 
-            <div class="p-3 border-t border-black/5 text-[11px] text-[var(--text-muted)] text-center bg-white/30">
-                DesiCrew assessment · Task 1
+                <div class="accent-panel rounded-2xl p-3.5">
+                    <div class="flex items-center justify-between mb-1">
+                        <h3 class="font-semibold text-xs">Python playground</h3>
+                        <span class="text-[10px] font-mono text-[var(--text-muted)]">df · pd · np · plt · sns</span>
+                    </div>
+                    <p class="text-[11px] text-[var(--text-secondary)] leading-relaxed mb-2.5">Pandas, matplotlib, and seaborn against the in-memory sheet.</p>
+                    <button type="button" onclick="openPlayground()" class="btn btn-secondary btn-sm w-full">Open playground</button>
+                </div>
             </div>
+            <div class="p-3 border-t border-black/5 text-[11px] text-[var(--text-muted)] text-center">DesiCrew assessment · Task 1</div>
         </aside>
 
         <div class="flex-1 flex flex-col h-full relative overflow-hidden min-w-0">
-
             <header class="h-14 glass-bar flex items-center justify-between px-4 sm:px-5 z-10 flex-shrink-0">
                 <div class="flex items-center gap-2.5 min-w-0">
-                    <a href="/" class="text-[var(--color-text-muted)] hover:text-[var(--color-text)] text-sm shrink-0 flex items-center gap-1 font-medium transition-colors">Home</a>
+                    <a href="/" class="text-[var(--color-text-muted)] hover:text-[var(--color-text)] text-sm shrink-0 font-medium">Home</a>
                     <span class="text-black/10">|</span>
-                    <button type="button" onclick="toggleSidebar()" class="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-lg hover:bg-black/5 transition-colors shrink-0" aria-label="Toggle sidebar" title="Toggle sidebar">
+                    <button type="button" onclick="toggleSidebar()" class="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-lg hover:bg-black/5" aria-label="Toggle sidebar">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                     </button>
-                    <div class="min-w-0 flex items-baseline gap-2">
-                        <h1 class="font-semibold text-[var(--color-text)] text-sm truncate">Inventory Analyst</h1>
-                        <span class="text-[11px] text-[var(--color-text-muted)] truncate hidden md:inline">Pandas engine</span>
-                    </div>
+                    <h1 class="font-semibold text-[var(--color-text)] text-sm truncate">Inventory Analyst</h1>
                 </div>
-
                 <div class="flex items-center gap-2 flex-shrink-0">
                     {% if has_gemini_key %}
-                    <span class="inline-flex items-center text-[11px] font-medium px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-900 border border-emerald-500/20">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>Gemini
-                    </span>
+                    <span class="status-live inline-flex items-center text-[11px] font-medium px-2.5 py-1 rounded-full"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>Gemini</span>
                     {% else %}
-                    <span class="inline-flex items-center text-[11px] font-medium px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-900 border border-amber-500/20">
-                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>Fallback mode
-                    </span>
+                    <span class="status-warn inline-flex items-center text-[11px] font-medium px-2.5 py-1 rounded-full"><span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>Fallback mode</span>
                     {% endif %}
                     {% include 'partials/theme_toggle.html' %}
                 </div>
@@ -165,78 +140,77 @@
                 <div class="flex items-start gap-3 welcome-block">
                     <div class="w-8 h-8 rounded-full avatar-ai flex items-center justify-center font-bold text-[10px] text-white flex-shrink-0 mt-0.5">AI</div>
                     <div class="msg-assistant rounded-2xl rounded-tl-md p-4 max-w-[90%] text-sm leading-relaxed shadow-sm">
-                        <p class="font-semibold text-[var(--text-primary)] mb-1">Welcome back.</p>
-                        <p class="text-[var(--text-secondary)]">
-                            I'm connected to <strong class="text-[var(--text-primary)]">{{ dataset_name|default:"your inventory file" }}</strong> in memory as <code>df</code>. Ask about stock levels, sales, valuation, or supply-chain terms.
-                        </p>
-                        <p class="text-xs text-[var(--text-muted)] mt-2">Expand <strong>Executed query</strong> on any answer to see the Python or search used.</p>
+                        <p class="font-semibold text-[var(--text-primary)] mb-1">Inventory analyst</p>
+                        <p class="text-[var(--text-secondary)]">Connected to <strong class="text-[var(--text-primary)]">{{ dataset_name|default:"your inventory file" }}</strong>. Open the original sheet, run a smart analysis, or ask a question.</p>
                     </div>
                 </div>
             </div>
 
-            <div id="loadingIndicator" class="hidden my-1 flex items-center gap-2 text-teal-800 text-xs font-medium pl-4 max-w-3xl mx-auto w-full flex-shrink-0">
-                <svg class="animate-spin h-4 w-4 text-teal-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+            <div id="loadingIndicator" class="hidden my-1 flex items-center gap-2 text-[var(--color-teal)] text-xs font-medium pl-4 max-w-3xl mx-auto w-full flex-shrink-0">
+                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                 </svg>
-                <span>Thinking and running tools…</span>
+                <span id="loadingText">Working…</span>
             </div>
 
             <div class="p-4 pb-5 flex-shrink-0">
                 <div class="max-w-3xl mx-auto w-full">
-                    <form id="chatForm" onsubmit="handleSubmit(event)" class="glass-composer rounded-2xl p-2 flex items-center gap-2 transition-all">
+                    <form id="chatForm" onsubmit="handleSubmit(event)" class="glass-composer rounded-2xl p-2 flex items-end gap-2">
                         {% csrf_token %}
-                        <input
-                            id="messageInput"
-                            type="text"
-                            placeholder="Message inventory analyst…"
-                            autocomplete="off"
-                            class="w-full bg-transparent px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none"
-                        >
-                        <button
-                            type="submit"
-                            id="sendBtn"
-                            class="btn btn-primary btn-sm p-2.5 !min-w-[2.5rem] flex-shrink-0"
-                            aria-label="Send"
-                        >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"/>
-                            </svg>
+                        <textarea id="messageInput" rows="1" placeholder="Message inventory analyst…" class="w-full bg-transparent px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none"></textarea>
+                        <button type="submit" id="sendBtn" class="btn btn-primary btn-sm p-2.5 !min-w-[2.5rem] flex-shrink-0" aria-label="Send">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"/></svg>
                         </button>
                     </form>
-                    <p class="text-[11px] text-center text-[var(--text-muted)] mt-2.5">Readable answers with optional code & search details.</p>
+                    <p class="text-[11px] text-center text-[var(--text-muted)] mt-2.5">Enter to send · Shift+Enter for a new line</p>
                 </div>
             </div>
         </div>
     </div>
 
+    <div id="dataModal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-panel rounded-2xl max-w-5xl w-full flex flex-col overflow-hidden max-h-[88vh]">
+            <div class="p-4 border-b border-black/5 flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                    <h3 class="font-semibold text-sm text-[var(--text-primary)]">Original inventory data</h3>
+                    <p id="dataMeta" class="text-[11px] text-[var(--text-muted)]">View only</p>
+                </div>
+                <button type="button" onclick="closeDataViewer()" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1.5 rounded-lg hover:bg-black/5" aria-label="Close">&times;</button>
+            </div>
+            <div class="px-4 py-3 border-b border-black/5">
+                <input id="dataFilter" type="search" placeholder="Filter rows…" class="w-full text-sm rounded-xl border border-black/10 bg-white/70 dark:bg-slate-800 px-3 py-2 text-[var(--color-text)] outline-none" oninput="renderDataTable()">
+            </div>
+            <div class="flex-1 overflow-auto p-4">
+                <table class="data-table">
+                    <thead id="dataHead"></thead>
+                    <tbody id="dataBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <div id="playgroundModal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="glass-panel rounded-2xl max-w-2xl w-full flex flex-col overflow-hidden max-h-[85vh] border border-white/70">
+        <div class="glass-panel rounded-2xl max-w-2xl w-full flex flex-col overflow-hidden max-h-[88vh]">
             <div class="p-4 border-b border-black/5 flex items-center justify-between">
                 <div>
                     <h3 class="font-semibold text-sm text-[var(--text-primary)]">Python playground</h3>
-                    <p class="text-[11px] text-[var(--text-muted)]">Active <code class="font-mono text-xs bg-black/5 px-1 rounded">df</code></p>
+                    <p class="text-[11px] text-[var(--text-muted)]"><code>df</code> · <code>pd</code> · <code>np</code> · <code>plt</code> · <code>sns</code></p>
                 </div>
-                <button type="button" onclick="closePlayground()" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1.5 rounded-lg hover:bg-black/5" aria-label="Close">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
+                <button type="button" onclick="closePlayground()" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1.5" aria-label="Close">&times;</button>
             </div>
-
             <div class="p-4 flex-1 flex flex-col space-y-3 overflow-y-auto">
-                <label class="block text-xs font-medium text-[var(--text-secondary)]" for="playgroundCode">Python code</label>
-                <textarea id="playgroundCode" rows="5" class="w-full font-mono text-xs p-3 bg-slate-900 text-slate-100 rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500/40" placeholder="print(df[['Product ID', 'Product Name', 'Hand-In-Stock']].head())"></textarea>
-
-                <div class="flex justify-between items-center gap-2 flex-wrap">
-                    <span class="text-[11px] text-[var(--text-muted)]">Variables: <code class="font-mono text-[var(--text-secondary)]">df</code>, <code class="font-mono">pd</code>, <code class="font-mono">np</code></span>
-                    <button type="button" onclick="runPlaygroundCode()" id="runPlaygroundBtn" class="px-4 py-2 bg-teal-700 hover:bg-teal-600 text-white font-medium text-xs rounded-xl">
-                        Execute
-                    </button>
+                <div class="flex flex-wrap gap-1.5">
+                    <button type="button" class="chip-btn text-[11px] px-2.5 py-1 rounded-full" onclick="loadSnippet('head')">Preview rows</button>
+                    <button type="button" class="chip-btn text-[11px] px-2.5 py-1 rounded-full" onclick="loadSnippet('low')">Lowest stock</button>
+                    <button type="button" class="chip-btn text-[11px] px-2.5 py-1 rounded-full" onclick="loadSnippet('chart')">Seaborn value chart</button>
                 </div>
-
-                <div>
-                    <span class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Output</span>
-                    <pre id="playgroundOutput" class="bg-white/60 text-[var(--text-primary)] text-xs p-3 rounded-xl border border-black/5 overflow-x-auto min-h-[100px] max-h-[200px] font-mono">Run code to see results…</pre>
+                <textarea id="playgroundCode" rows="6" class="code-surface w-full font-mono text-xs p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/40" placeholder="print(df.head())"></textarea>
+                <div class="flex justify-end">
+                    <button type="button" onclick="runPlaygroundCode()" id="runPlaygroundBtn" class="btn btn-primary btn-sm">Execute</button>
                 </div>
+                <pre id="playgroundOutput" class="code-surface text-xs p-3 rounded-xl min-h-[72px] font-mono">Run code to see results…</pre>
+                <div id="playgroundCharts" class="space-y-2"></div>
             </div>
         </div>
     </div>
@@ -245,110 +219,97 @@
         const chatMessages = document.getElementById('chatMessages');
         const messageInput = document.getElementById('messageInput');
         const loadingIndicator = document.getElementById('loadingIndicator');
+        const loadingText = document.getElementById('loadingText');
         const sendBtn = document.getElementById('sendBtn');
         const sidebar = document.getElementById('sidebar');
         let conversationHistory = [];
-
+        let sheetCache = null;
+        let sortState = { col: null, dir: 1 };
         const welcomeHtml = chatMessages.innerHTML;
+        const SNIPPETS = {
+            head: "print(df.head(8))",
+            low: "print(df.nsmallest(8, 'Hand-In-Stock')[['Product Name', 'Hand-In-Stock', 'Number of Units Sold']])",
+            chart: "top = df.nlargest(8, 'Cost Price Total (USD)')\nsns.barplot(data=top, y='Product Name', x='Cost Price Total (USD)', color='#0f766e')\nplt.title('Top products by inventory value')\nplt.tight_layout()"
+        };
+
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+            }
+        });
+        messageInput.addEventListener('input', () => {
+            messageInput.style.height = 'auto';
+            messageInput.style.height = Math.min(messageInput.scrollHeight, 128) + 'px';
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            closePlayground();
+            closeDataViewer();
+        });
 
         function toggleSidebar() {
-            if (window.innerWidth <= 768) {
-                sidebar.classList.toggle('sidebar-hidden');
-            } else {
-                sidebar.classList.toggle('-ml-80');
-            }
+            if (window.innerWidth <= 768) sidebar.classList.toggle('sidebar-hidden');
+            else sidebar.classList.toggle('-ml-80');
         }
-
         function clearChat() {
             conversationHistory = [];
-            chatMessages.innerHTML = welcomeHtml.replace('Welcome back.', 'New chat started.');
+            chatMessages.innerHTML = welcomeHtml;
         }
-
         function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
+            const cookies = (document.cookie || '').split(';');
+            for (const raw of cookies) {
+                const cookie = raw.trim();
+                if (cookie.startsWith(name + '=')) return decodeURIComponent(cookie.slice(name.length + 1));
             }
-            return cookieValue;
+            return '';
         }
-
-        function scrollToBottom() {
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+        function csrf() {
+            return getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
         }
-
+        function scrollToBottom() { chatMessages.scrollTop = chatMessages.scrollHeight; }
         function escapeHtml(string) {
-            return String(string || '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
+            return String(string || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
-
+        function insertColumn(name) {
+            const token = name.includes(' ') ? `df['${name}']` : name;
+            const start = messageInput.selectionStart || messageInput.value.length;
+            const end = messageInput.selectionEnd || start;
+            messageInput.value = messageInput.value.slice(0, start) + token + messageInput.value.slice(end);
+            messageInput.focus();
+        }
+        function setBusy(on, label) {
+            loadingText.textContent = label || 'Working…';
+            loadingIndicator.classList.toggle('hidden', !on);
+            messageInput.disabled = on;
+            sendBtn.disabled = on;
+        }
+        function chartsHtml(data) {
+            const list = data.charts || [];
+            if (!list.length) return '';
+            return list.map((src) => `<img src="data:image/png;base64,${src}" alt="Analysis chart" class="chart-frame mt-3 w-full rounded-xl">`).join('');
+        }
         function appendUserMessage(text) {
             const div = document.createElement('div');
             div.className = 'flex items-start justify-end gap-3';
-            div.innerHTML = `
-                <div class="msg-user rounded-2xl rounded-tr-md p-3.5 max-w-[85%] text-sm leading-relaxed shadow-sm">
-                    <p>${escapeHtml(text)}</p>
-                </div>
-                <div class="w-8 h-8 rounded-full avatar-user flex items-center justify-center font-semibold text-[10px] flex-shrink-0 mt-0.5">You</div>
-            `;
+            div.innerHTML = `<div class="msg-user rounded-2xl rounded-tr-md p-3.5 max-w-[85%] text-sm leading-relaxed shadow-sm"><p>${escapeHtml(text)}</p></div><div class="w-8 h-8 rounded-full avatar-user flex items-center justify-center font-semibold text-[10px] flex-shrink-0 mt-0.5">You</div>`;
             chatMessages.appendChild(div);
             scrollToBottom();
         }
-
-        function appendAssistantResponse(data) {
+        function appendAssistantResponse(data, retryText) {
             const div = document.createElement('div');
             div.className = 'flex items-start gap-3';
-
             let querySectionHtml = '';
-
             if (data.code_executed || data.search_query) {
-                querySectionHtml = `
-                    <div class="mt-3 pt-2 border-t border-black/5">
-                        <details class="details-glass glass-inset rounded-xl overflow-hidden text-xs">
-                            <summary class="font-medium px-3 py-2.5 text-[var(--text-secondary)] hover:bg-white/50 transition-colors flex items-center justify-between select-none">
-                                <span>Executed query</span>
-                                <span class="text-[10px] text-[var(--text-muted)]">Show</span>
-                            </summary>
-                            <div class="p-3 border-t border-black/5 bg-slate-900 text-slate-100 space-y-2">
-                                ${data.code_executed ? `
-                                    <div>
-                                        <div class="text-[10px] font-mono text-teal-300 font-semibold mb-1">Python</div>
-                                        <pre class="text-slate-100 text-xs overflow-x-auto whitespace-pre font-mono bg-slate-950 p-2.5 rounded-lg border border-slate-800"><code>${escapeHtml(data.code_executed)}</code></pre>
-                                    </div>
-                                ` : ''}
-                                ${data.search_query ? `
-                                    <div class="pt-1">
-                                        <div class="text-[10px] font-mono text-teal-300 font-semibold mb-1">Web search</div>
-                                        <div class="text-slate-200 text-xs font-mono bg-slate-950 p-2 rounded-lg border border-slate-800">"${escapeHtml(data.search_query)}"</div>
-                                    </div>
-                                ` : ''}
-                            </div>
-                        </details>
-                    </div>
-                `;
+                querySectionHtml = `<div class="mt-3 pt-2 border-t border-black/5"><details class="details-glass glass-inset rounded-xl overflow-hidden text-xs"><summary class="font-medium px-3 py-2.5 text-[var(--text-secondary)] flex items-center justify-between">Executed query</summary><div class="p-3 border-t border-black/5 code-surface space-y-2">${data.code_executed ? `<pre class="text-xs whitespace-pre font-mono"><code>${escapeHtml(data.code_executed)}</code></pre>` : ''}${data.search_query ? `<div class="text-xs font-mono">Search: "${escapeHtml(data.search_query)}"</div>` : ''}</div></details></div>`;
             }
-
-            const parsedMarkdown = typeof marked !== 'undefined' ? marked.parse(data.reply || '') : escapeHtml(data.reply || '');
-
-            div.innerHTML = `
-                <div class="w-8 h-8 rounded-full avatar-ai flex items-center justify-center font-bold text-[10px] text-white flex-shrink-0 mt-0.5">AI</div>
-                <div class="msg-assistant rounded-2xl rounded-tl-md p-4 max-w-[90%] text-sm leading-relaxed shadow-sm">
-                    <div class="prose max-w-none">
-                        ${parsedMarkdown}
-                    </div>
-                    ${querySectionHtml}
-                </div>
-            `;
+            const parsed = typeof marked !== 'undefined' ? marked.parse(data.reply || '') : escapeHtml(data.reply || '');
+            const retryBtn = retryText ? `<button type="button" data-retry="${escapeHtml(retryText)}">Retry</button>` : '';
+            div.innerHTML = `<div class="w-8 h-8 rounded-full avatar-ai flex items-center justify-center font-bold text-[10px] text-white flex-shrink-0 mt-0.5">AI</div><div class="msg-assistant rounded-2xl rounded-tl-md p-4 max-w-[90%] text-sm leading-relaxed shadow-sm"><div class="prose max-w-none">${parsed}</div>${chartsHtml(data)}${querySectionHtml}<div class="msg-toolbar"><button type="button" data-copy="1">Copy</button>${retryBtn}</div></div>`;
+            div.querySelector('[data-copy]')?.addEventListener('click', (ev) => {
+                navigator.clipboard.writeText(data.reply || '').then(() => { ev.target.textContent = 'Copied'; setTimeout(() => { ev.target.textContent = 'Copy'; }, 1200); }).catch(() => {});
+            });
+            div.querySelector('[data-retry]')?.addEventListener('click', () => sendPrompt(retryText));
             chatMessages.appendChild(div);
             scrollToBottom();
         }
@@ -357,90 +318,133 @@
             messageInput.value = text;
             await handleSubmit(new Event('submit'));
         }
-
         async function handleSubmit(e) {
             if (e) e.preventDefault();
             const text = messageInput.value.trim();
             if (!text) return;
-
             appendUserMessage(text);
             conversationHistory.push({ role: 'user', content: text });
             messageInput.value = '';
-            messageInput.disabled = true;
-            sendBtn.disabled = true;
-            loadingIndicator.classList.remove('hidden');
-            scrollToBottom();
-
-            const csrftoken = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
-
+            messageInput.style.height = 'auto';
+            setBusy(true, 'Thinking and running tools…');
             try {
                 const response = await fetch('/task1/api/chat/', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrftoken
-                    },
-                    body: JSON.stringify({
-                        message: text,
-                        history: conversationHistory
-                    })
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+                    body: JSON.stringify({ message: text, history: conversationHistory })
                 });
-
-                if (!response.ok) {
-                    throw new Error(`Server returned HTTP ${response.status}`);
-                }
-
+                if (!response.ok) throw new Error(`Server returned HTTP ${response.status}`);
                 const data = await response.json();
                 appendAssistantResponse(data);
                 conversationHistory.push({ role: 'assistant', content: data.reply || '' });
-
             } catch (err) {
-                appendAssistantResponse({
-                    reply: `**Could not reach the agent:** ${err.message}. Check that the server is running.`
-                });
+                appendAssistantResponse({ reply: `**Could not reach the agent:** ${err.message}` }, text);
             } finally {
-                loadingIndicator.classList.add('hidden');
-                messageInput.disabled = false;
-                sendBtn.disabled = false;
+                setBusy(false);
                 messageInput.focus();
-                scrollToBottom();
+            }
+        }
+        async function runInsight(key) {
+            setBusy(true, 'Building chart and analysis…');
+            try {
+                const response = await fetch('/task1/api/insight/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+                    body: JSON.stringify({ insight: key })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+                appendUserMessage(data.question || 'Analysis');
+                appendAssistantResponse(data);
+                conversationHistory.push({ role: 'user', content: data.question || '' });
+                conversationHistory.push({ role: 'assistant', content: data.reply || '' });
+            } catch (err) {
+                appendAssistantResponse({ reply: `**Analysis failed:** ${err.message}` });
+            } finally {
+                setBusy(false);
             }
         }
 
         function openPlayground() {
             document.getElementById('playgroundModal').classList.remove('hidden');
+            document.getElementById('playgroundCode').focus();
         }
-
-        function closePlayground() {
-            document.getElementById('playgroundModal').classList.add('hidden');
+        function closePlayground() { document.getElementById('playgroundModal').classList.add('hidden'); }
+        function loadSnippet(key) {
+            document.getElementById('playgroundCode').value = SNIPPETS[key] || '';
         }
-
         async function runPlaygroundCode() {
             const code = document.getElementById('playgroundCode').value.trim();
             const outputElem = document.getElementById('playgroundOutput');
+            const chartBox = document.getElementById('playgroundCharts');
             const runBtn = document.getElementById('runPlaygroundBtn');
             if (!code) return;
-
             runBtn.disabled = true;
             outputElem.textContent = 'Executing…';
-            const csrftoken = getCookie('csrftoken') || '';
-
+            chartBox.innerHTML = '';
             try {
                 const response = await fetch('/task1/api/playground/', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrftoken
-                    },
-                    body: JSON.stringify({ code: code })
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+                    body: JSON.stringify({ code })
                 });
                 const res = await response.json();
                 outputElem.textContent = res.output || res.error || 'No output';
+                chartBox.innerHTML = chartsHtml(res);
             } catch (err) {
                 outputElem.textContent = 'Execution error: ' + err.message;
             } finally {
                 runBtn.disabled = false;
             }
+        }
+
+        async function openDataViewer() {
+            document.getElementById('dataModal').classList.remove('hidden');
+            if (!sheetCache) {
+                document.getElementById('dataMeta').textContent = 'Loading sheet…';
+                const response = await fetch('/task1/api/records/');
+                const data = await response.json();
+                if (!response.ok) {
+                    document.getElementById('dataMeta').textContent = data.error || 'Could not load the sheet';
+                    return;
+                }
+                sheetCache = data;
+            }
+            renderDataTable();
+        }
+        function closeDataViewer() { document.getElementById('dataModal').classList.add('hidden'); }
+        function renderDataTable() {
+            if (!sheetCache) return;
+            const q = (document.getElementById('dataFilter').value || '').trim().toLowerCase();
+            let rows = sheetCache.rows.slice();
+            if (q) {
+                rows = rows.filter((row) => sheetCache.columns.some((col) => String(row[col] ?? '').toLowerCase().includes(q)));
+            }
+            if (sortState.col) {
+                const col = sortState.col;
+                rows.sort((a, b) => {
+                    const av = a[col], bv = b[col];
+                    if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * sortState.dir;
+                    return String(av ?? '').localeCompare(String(bv ?? '')) * sortState.dir;
+                });
+            }
+            document.getElementById('dataMeta').textContent = `View only · showing ${rows.length} of ${sheetCache.row_count} rows`;
+            document.getElementById('dataHead').innerHTML = '<tr>' + sheetCache.columns.map((col) => `<th><button type="button" class="font-semibold" data-sort="${escapeHtml(col)}">${escapeHtml(col)}</button></th>`).join('') + '</tr>';
+            document.getElementById('dataBody').innerHTML = rows.map((row) => '<tr>' + sheetCache.columns.map((col) => `<td>${formatCell(col, row[col])}</td>`).join('') + '</tr>').join('');
+            document.querySelectorAll('#dataHead [data-sort]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const col = btn.getAttribute('data-sort');
+                    sortState.dir = sortState.col === col ? -sortState.dir : 1;
+                    sortState.col = col;
+                    renderDataTable();
+                });
+            });
+        }
+        function formatCell(col, val) {
+            if (val === null || val === undefined || val === '') return '<span class="italic text-[var(--text-muted)]">—</span>';
+            if (typeof val === 'number' && col.includes('USD')) return '$' + val.toLocaleString();
+            if (typeof val === 'number') return val.toLocaleString();
+            return escapeHtml(String(val));
         }
     </script>
 </body>
