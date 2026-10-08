@@ -8,6 +8,9 @@ import pandas as pd
 
 
 def _plot_modules():
+    import os
+    import tempfile
+    os.environ.setdefault("MPLCONFIGDIR", os.path.join(tempfile.gettempdir(), "matplotlib-cache"))
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
