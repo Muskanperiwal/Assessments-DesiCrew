@@ -13,17 +13,24 @@
                 document.documentElement.classList.remove('dark');
             }
         } catch(e) {}
+        syncTailwindDarkClass();
     })();
+
+    /** Tailwind uses .dark; app UI uses data-theme — keep them aligned. */
+    function syncTailwindDarkClass() {
+        var theme = document.documentElement.getAttribute('data-theme') || 'light';
+        if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    }
 
     function toggleTheme() {
         var current = document.documentElement.getAttribute('data-theme') || 'light';
         var next = current === 'dark' ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme', next);
-        if (next === 'dark') {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
+        syncTailwindDarkClass();
         try { localStorage.setItem('app_theme', next); } catch(e) {}
         updateThemeToggleLabels(next);
     }
@@ -39,10 +46,12 @@
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
+            syncTailwindDarkClass();
             var current = document.documentElement.getAttribute('data-theme') || 'light';
             updateThemeToggleLabels(current);
         });
     } else {
+        syncTailwindDarkClass();
         var current = document.documentElement.getAttribute('data-theme') || 'light';
         updateThemeToggleLabels(current);
     }
