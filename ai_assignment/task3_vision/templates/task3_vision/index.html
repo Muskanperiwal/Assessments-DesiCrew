@@ -15,6 +15,171 @@
             border-color: var(--color-teal) !important;
             background: var(--color-teal-soft) !important;
         }
+
+        /* ==========================================================================
+           Industry-Standard High-Contrast Semantic Design System Tokens (WCAG AAA)
+           ========================================================================== */
+
+        /* 1. Accessible Warning / Out-of-Scope Banner */
+        .ui-banner-warning {
+            background-color: #fffbeb !important; /* Amber 50 */
+            border: 1.5px solid #d97706 !important; /* Amber 600 */
+            color: #78350f !important; /* Amber 900 - 9:1 contrast */
+            box-shadow: 0 1px 3px rgba(217, 119, 6, 0.08) !important;
+        }
+        html[data-theme="dark"] .ui-banner-warning,
+        html.dark .ui-banner-warning {
+            background-color: #1c1917 !important; /* Stone 900 */
+            border: 1.5px solid #f59e0b !important; /* Amber 500 */
+            color: #fef3c7 !important; /* Amber 100 */
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+        }
+        .ui-text-warning-title {
+            color: #92400e !important; /* Amber 800 */
+            font-weight: 700 !important;
+        }
+        html[data-theme="dark"] .ui-text-warning-title,
+        html.dark .ui-text-warning-title {
+            color: #fde68a !important; /* Amber 200 */
+        }
+        .ui-text-warning-body {
+            color: #78350f !important; /* Amber 900 */
+            font-weight: 500 !important;
+            line-height: 1.5 !important;
+        }
+        html[data-theme="dark"] .ui-text-warning-body,
+        html.dark .ui-text-warning-body {
+            color: #fef3c7 !important;
+        }
+        .ui-text-warning-footer {
+            color: #92400e !important;
+            border-color: rgba(217, 119, 6, 0.25) !important;
+        }
+        html[data-theme="dark"] .ui-text-warning-footer,
+        html.dark .ui-text-warning-footer {
+            color: #fcd34d !important;
+            border-color: rgba(245, 158, 11, 0.3) !important;
+        }
+
+        /* 1b. Accessible Success Banner */
+        .ui-banner-success {
+            background-color: #ecfdf5 !important; /* Emerald 50 */
+            border: 1.5px solid #059669 !important; /* Emerald 600 */
+            color: #064e3b !important; /* Emerald 950 - 9:1 contrast */
+            box-shadow: 0 1px 3px rgba(5, 150, 105, 0.08) !important;
+        }
+        html[data-theme="dark"] .ui-banner-success,
+        html.dark .ui-banner-success {
+            background-color: #022c22 !important; /* Emerald 950 */
+            border: 1.5px solid #10b981 !important; /* Emerald 500 */
+            color: #ecfdf5 !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+        }
+        .ui-text-success-title {
+            color: #065f46 !important; /* Emerald 800 */
+            font-weight: 700 !important;
+        }
+        html[data-theme="dark"] .ui-text-success-title,
+        html.dark .ui-text-success-title {
+            color: #6ee7b7 !important; /* Emerald 300 */
+        }
+        .ui-text-success-body {
+            color: #064e3b !important; /* Emerald 950 */
+            font-weight: 500 !important;
+            line-height: 1.5 !important;
+        }
+        html[data-theme="dark"] .ui-text-success-body,
+        html.dark .ui-text-success-body {
+            color: #d1fae5 !important;
+        }
+
+        /* 1c. Accessible Danger / Missing Banner */
+        .ui-banner-danger {
+            background-color: #fef2f2 !important; /* Red 50 */
+            border: 1.5px solid #dc2626 !important; /* Red 600 */
+            color: #7f1d1d !important; /* Red 900 - 9:1 contrast */
+            box-shadow: 0 1px 3px rgba(220, 38, 38, 0.08) !important;
+        }
+        html[data-theme="dark"] .ui-banner-danger,
+        html.dark .ui-banner-danger {
+            background-color: #450a0a !important; /* Red 950 */
+            border: 1.5px solid #ef4444 !important; /* Red 500 */
+            color: #fee2e2 !important;
+        }
+
+        /* 2. Accessible Badges & Status Pills */
+        .ui-pill-warning {
+            background-color: #fef3c7 !important; /* Amber 100 */
+            border: 1.5px solid #d97706 !important; /* Amber 600 */
+            color: #78350f !important; /* Amber 900 */
+            font-weight: 700 !important;
+        }
+        html[data-theme="dark"] .ui-pill-warning,
+        html.dark .ui-pill-warning {
+            background-color: rgba(217, 119, 6, 0.25) !important;
+            border: 1.5px solid #f59e0b !important;
+            color: #fde68a !important;
+        }
+
+        .ui-pill-success {
+            background-color: #ecfdf5 !important; /* Emerald 50 */
+            border: 1.5px solid #059669 !important; /* Emerald 600 */
+            color: #065f46 !important; /* Emerald 800 */
+            font-weight: 700 !important;
+        }
+        html[data-theme="dark"] .ui-pill-success,
+        html.dark .ui-pill-success {
+            background-color: rgba(5, 150, 105, 0.2) !important;
+            border: 1.5px solid #10b981 !important;
+            color: #a7f3d0 !important;
+        }
+
+        .ui-pill-neutral {
+            background-color: #f1f5f9 !important; /* Slate 100 */
+            border: 1px solid #cbd5e1 !important; /* Slate 300 */
+            color: #1e293b !important; /* Slate 800 */
+            font-weight: 600 !important;
+        }
+        html[data-theme="dark"] .ui-pill-neutral,
+        html.dark .ui-pill-neutral {
+            background-color: rgba(30, 41, 59, 0.6) !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            color: #f1f5f9 !important;
+        }
+
+        .ui-pill-danger {
+            background-color: #fef2f2 !important; /* Red 50 */
+            border: 1.5px solid #dc2626 !important; /* Red 600 */
+            color: #991b1b !important; /* Red 800 */
+            font-weight: 700 !important;
+        }
+        html[data-theme="dark"] .ui-pill-danger,
+        html.dark .ui-pill-danger {
+            background-color: rgba(220, 38, 38, 0.25) !important;
+            border: 1.5px solid #ef4444 !important;
+            color: #fecaca !important;
+        }
+
+        /* 3. High-Contrast Confidence Scores */
+        .score-pass {
+            color: #047857 !important; /* Emerald 700 */
+            font-weight: 700 !important;
+        }
+        html[data-theme="dark"] .score-pass,
+        html.dark .score-pass {
+            color: #34d399 !important;
+        }
+
+        .score-warn {
+            color: #b45309 !important; /* Amber 700 - sharp & visible */
+            font-weight: 700 !important;
+        }
+        html[data-theme="dark"] .score-warn,
+        html.dark .score-warn {
+            color: #fbbf24 !important;
+        }
+
+        /* 4. Table Typography & High-Contrast Borders */
         .task3-table .data-table {
             font-size: 0.8125rem;
             width: 100%;
@@ -22,38 +187,62 @@
             border-spacing: 0;
         }
         .task3-table .data-table th {
-            color: var(--color-text);
-            padding: 0.65rem 0.85rem;
-            font-weight: 600;
-            background: rgba(0, 0, 0, 0.03);
-            border-bottom: 1px solid var(--color-border);
+            color: #334155 !important; /* Slate 700 */
+            padding: 0.75rem 0.85rem;
+            font-weight: 700;
+            background: #f8fafc;
+            border-bottom: 2px solid #e2e8f0;
         }
         html[data-theme="dark"] .task3-table .data-table th {
-            background: rgba(255, 255, 255, 0.03);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e2e8f0 !important;
+            background: #0f172a;
+            border-bottom: 2px solid #334155;
         }
         .task3-table .data-table td {
-            color: var(--color-text);
-            padding: 0.65rem 0.85rem;
-            vertical-align: top;
-            border-bottom: 1px solid var(--color-border);
+            color: #0f172a !important; /* Slate 900 */
+            padding: 0.75rem 0.85rem;
+            vertical-align: middle;
+            border-bottom: 1px solid #f1f5f9;
         }
         html[data-theme="dark"] .task3-table .data-table td {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            color: #f8fafc !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
+
+        .row-flagged-warning {
+            background-color: #fffbeb !important; /* Amber 50 */
+            border-left: 4px solid #d97706 !important;
+        }
+        html[data-theme="dark"] .row-flagged-warning,
+        html.dark .row-flagged-warning {
+            background-color: rgba(217, 119, 6, 0.12) !important;
+            border-left: 4px solid #f59e0b !important;
+        }
+
+        /* 5. Inputs */
         .task3-table input.field-edit {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            border: 1.5px solid #cbd5e1 !important;
+            font-weight: 500;
             transition: all 0.15s ease-in-out;
+        }
+        html[data-theme="dark"] .task3-table input.field-edit {
+            background: #1e293b !important;
+            color: #f8fafc !important;
+            border: 1.5px solid #475569 !important;
         }
         .task3-table input.field-edit:focus {
             outline: none;
-            border-color: var(--color-teal) !important;
-            box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.2) !important;
+            border-color: #0d9488 !important;
+            box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.25) !important;
         }
+
         #errorState {
             color: #7f1d1d;
             background: #fef2f2;
             border-color: #fca5a5;
-            font-weight: 500;
+            font-weight: 600;
         }
         html[data-theme="dark"] #errorState,
         html.dark #errorState {
@@ -61,37 +250,47 @@
             background: rgba(127, 29, 29, 0.35);
             border-color: rgba(248, 113, 113, 0.45);
         }
+
+        /* 6. Tabs */
         .result-tab-bar {
-            background: rgba(15, 23, 42, 0.05);
-            border: 1px solid var(--color-border);
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
         }
         html[data-theme="dark"] .result-tab-bar {
-            background: rgba(255, 255, 255, 0.06);
+            background: #1e293b;
+            border: 1px solid #334155;
         }
         .result-tab-btn {
-            padding: 0.375rem 0.875rem;
+            padding: 0.4rem 0.95rem;
             border-radius: var(--radius-md);
             font-size: 0.75rem;
-            font-weight: 500;
-            color: var(--color-text-secondary);
+            font-weight: 600;
+            color: #475569;
             background: transparent;
             border: none;
             cursor: pointer;
-            transition: color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+            transition: all 0.15s ease;
             flex-shrink: 0;
         }
         .result-tab-btn:hover {
-            color: var(--color-text);
+            color: #0f172a;
+            background: rgba(0, 0, 0, 0.04);
+        }
+        html[data-theme="dark"] .result-tab-btn:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.06);
         }
         .result-tab-btn.is-active {
-            background: #ffffff;
-            color: var(--color-text);
-            font-weight: 600;
-            box-shadow: var(--shadow-sm);
+            background: #ffffff !important;
+            color: #0f172a !important;
+            font-weight: 700 !important;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1) !important;
         }
         html[data-theme="dark"] .result-tab-btn.is-active {
-            background: var(--color-surface);
-            border: 1px solid var(--color-border);
+            background: #0f172a !important;
+            color: #f8fafc !important;
+            border: 1px solid #334155 !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) !important;
         }
     </style>
 </head>
@@ -203,18 +402,18 @@
                     </div>
 
                     <!-- Out-of-Scope / Unsupported Document Alert Banner -->
-                    <div id="unsupportedDocAlert" class="hidden rounded-2xl p-4 border border-amber-500/40 bg-amber-500/10 text-amber-950 dark:text-amber-100 space-y-2">
+                    <div id="unsupportedDocAlert" class="hidden rounded-2xl p-4 ui-banner-warning space-y-2.5">
                         <div class="flex items-center justify-between gap-2 flex-wrap">
                             <div class="flex items-center gap-2">
-                                <span class="text-base">⚠️</span>
-                                <h4 class="font-bold text-sm">Unsupported / Out-of-Scope Document</h4>
-                                <span id="unsupportedDetectedBadge" class="text-[11px] px-2 py-0.5 rounded-full border border-amber-600/30 bg-amber-500/20 font-mono font-semibold"></span>
+                                <span class="text-lg">⚠️</span>
+                                <h4 class="ui-text-warning-title text-sm tracking-tight">Unsupported / Out-of-Scope Document</h4>
+                                <span id="unsupportedDetectedBadge" class="text-xs px-2.5 py-0.5 rounded-full ui-pill-warning font-mono"></span>
                             </div>
-                            <span class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/20 text-amber-900 dark:text-amber-200">Out-of-Scope Format</span>
+                            <span class="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded ui-pill-warning">Out-of-Scope Format</span>
                         </div>
-                        <p id="unsupportedReasonText" class="text-xs text-amber-900/90 dark:text-amber-200/90 font-normal leading-relaxed"></p>
-                        <div class="text-[11px] text-amber-900/80 dark:text-amber-300/80 font-mono pt-1.5 border-t border-amber-500/20">
-                            <strong>Supported Schemas (10 Types):</strong> Aadhaar Card &bull; PAN Card &bull; Driving Licence &bull; Passport &bull; NACH Mandate &bull; FATCA Form &bull; Benefit Illustration &bull; Moral Hazard &bull; Multiple Policies &bull; Suitability Profiler
+                        <p id="unsupportedReasonText" class="ui-text-warning-body text-xs"></p>
+                        <div class="ui-text-warning-footer text-[11px] font-mono pt-2 border-t">
+                            <strong class="font-bold">Supported Schemas (10 Types):</strong> Aadhaar Card &bull; PAN Card &bull; Driving Licence &bull; Passport &bull; NACH Mandate &bull; FATCA Form &bull; Benefit Illustration &bull; Moral Hazard &bull; Multiple Policies &bull; Suitability Profiler
                         </div>
                     </div>
 
@@ -225,7 +424,7 @@
                         </button>
                         <button type="button" id="tabFlaggingBtn" onclick="switchResultTab('flagging')" class="result-tab-btn flex items-center gap-1.5">
                             <span>Flagging Report</span>
-                            <span id="tabFlaggedCountBadge" class="hidden px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-800 dark:text-amber-300">0</span>
+                            <span id="tabFlaggedCountBadge" class="hidden px-1.5 py-0.5 rounded-full text-[10px] font-bold ui-pill-warning">0</span>
                         </button>
                         <button type="button" id="tabJsonBtn" onclick="switchResultTab('json')" class="result-tab-btn">
                             { } API Response JSON
@@ -282,14 +481,14 @@
                             </div>
                             <!-- Clean Compact Decision Rules Badge -->
                             <div class="flex items-center gap-1.5 text-[11px] font-mono flex-wrap">
-                                <span class="text-[var(--color-text-muted)] text-[10px] uppercase font-semibold">Rules:</span>
-                                <span class="px-2 py-0.5 rounded-md border border-emerald-600/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300">
+                                <span class="text-[var(--color-text-muted)] text-[10px] uppercase font-bold">Rules:</span>
+                                <span class="px-2.5 py-0.5 rounded-md ui-pill-success text-[10px]">
                                     &ge; {{ confidence_threshold }} Pass
                                 </span>
-                                <span class="px-2 py-0.5 rounded-md border border-amber-600/30 bg-amber-500/10 text-amber-800 dark:text-amber-300">
+                                <span class="px-2.5 py-0.5 rounded-md ui-pill-warning text-[10px]">
                                     &lt; {{ confidence_threshold }} Review
                                 </span>
-                                <span class="px-2 py-0.5 rounded-md border border-red-600/30 bg-red-500/10 text-red-800 dark:text-red-300">
+                                <span class="px-2.5 py-0.5 rounded-md ui-pill-danger text-[10px]">
                                     Missing Review
                                 </span>
                             </div>
@@ -301,11 +500,11 @@
                         <!-- Dedicated Flagged Fields Table (Visible ONLY when fields are flagged) -->
                         <div id="flaggedFieldsTableContainer" class="hidden space-y-2 pt-1">
                             <div class="flex items-center justify-between">
-                                <p class="text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-                                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                                <p class="text-xs font-bold uppercase tracking-wide ui-text-warning-title flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
                                     <span>Fields Requiring Human Review (&lt; {{ confidence_threshold }})</span>
                                 </p>
-                                <button type="button" onclick="switchResultTab('extracted')" class="text-xs text-amber-700 dark:text-amber-300 underline font-medium">Edit values in Extracted Fields tab →</button>
+                                <button type="button" onclick="switchResultTab('extracted')" class="text-xs font-bold text-teal-700 dark:text-teal-400 hover:underline shrink-0">Edit values in Extracted Fields tab →</button>
                             </div>
                             <div class="overflow-x-auto rounded-xl glass-inset task3-table">
                                 <table class="data-table w-full">
@@ -656,8 +855,8 @@
                 const failRows = failures.map(f => `<tr><td class="font-mono text-[11px]">${escapeHtml(f.filename)}</td><td colspan="3" class="text-red-700 dark:text-red-300">${escapeHtml(f.error)}</td></tr>`).join('');
 
                 batchSummary.innerHTML = `
-                    <p class="font-semibold text-[var(--color-text)] mb-3 text-sm">Batch: ${docNames.length} processed, ${failures.length} failed · ${flagged} flagged field entries total</p>
-                    <div class="overflow-x-auto max-h-48 overflow-y-auto rounded-xl glass-inset">
+                    <p class="font-bold text-[var(--color-text)] mb-3 text-sm">Batch: ${docNames.length} processed, ${failures.length} failed · ${flagged} flagged field entries total</p>
+                    <div class="overflow-x-auto max-h-48 overflow-y-auto rounded-xl glass-inset task3-table">
                         <table class="data-table">
                             <thead><tr><th>File</th><th>Classification</th><th>Flagged</th><th></th></tr></thead>
                             <tbody>${rows}${failRows}</tbody>
@@ -739,25 +938,25 @@
             const headerPill = document.getElementById('headerCompliancePill');
             if (headerPill) {
                 if (!isSupported) {
-                    headerPill.className = "inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium border border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200";
+                    headerPill.className = "inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ui-pill-warning";
                     headerPill.textContent = "Out-of-Scope Document";
                 } else if (flaggedCount > 0) {
-                    headerPill.className = "inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium border border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200";
+                    headerPill.className = "inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ui-pill-warning";
                     headerPill.textContent = `${flaggedCount} Below 0.85`;
                 } else {
-                    headerPill.className = "inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium border border-emerald-600/30 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200";
+                    headerPill.className = "inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ui-pill-success";
                     headerPill.textContent = "Straight-through Approved";
                 }
             }
             if (!pill) return;
             if (!isSupported) {
                 pill.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold border border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200 shadow-sm">
-                            <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                    <div class="flex items-center gap-2.5">
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold ui-pill-warning shadow-sm">
+                            <span class="w-2 h-2 rounded-full bg-amber-600 animate-pulse"></span>
                             <span>Out-of-Scope Document</span>
                         </span>
-                        <button type="button" onclick="switchResultTab('flagging')" class="text-xs font-semibold text-[var(--color-teal)] hover:underline shrink-0 flex items-center gap-1">
+                        <button type="button" onclick="switchResultTab('flagging')" class="text-xs font-bold text-teal-700 dark:text-teal-400 hover:underline shrink-0 flex items-center gap-1">
                             <span>Compliance Report &rarr;</span>
                         </button>
                     </div>
@@ -766,20 +965,20 @@
             }
             if (flaggedCount > 0) {
                 pill.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold border border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200 shadow-sm">
-                            <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                    <div class="flex items-center gap-2.5">
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold ui-pill-warning shadow-sm">
+                            <span class="w-2 h-2 rounded-full bg-amber-600 animate-pulse"></span>
                             <span>${flaggedCount} ${flaggedCount === 1 ? 'Field Below' : 'Fields Below'} 0.85</span>
                         </span>
-                        <button type="button" onclick="switchResultTab('flagging')" class="text-xs font-semibold text-[var(--color-teal)] hover:underline shrink-0 flex items-center gap-1">
+                        <button type="button" onclick="switchResultTab('flagging')" class="text-xs font-bold text-teal-700 dark:text-teal-400 hover:underline shrink-0 flex items-center gap-1">
                             <span>View Flagging Report &rarr;</span>
                         </button>
                     </div>
                 `;
             } else {
                 pill.innerHTML = `
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold border border-emerald-600/30 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200 shadow-sm">
-                        <span class="text-emerald-600 dark:text-emerald-400 font-bold">&check;</span>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold ui-pill-success shadow-sm">
+                        <span>&check;</span>
                         <span>Straight-Through Approved (&ge; 0.85)</span>
                     </span>
                 `;
@@ -808,14 +1007,16 @@
                     if (unsupportedReasonEl) unsupportedReasonEl.textContent = unsupportedReason;
                 }
                 document.getElementById('classificationBadge').innerHTML = `
-                    <span class="inline-flex items-center gap-2 text-amber-700 dark:text-amber-400">
-                        <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
-                        <span>${escapeHtml(data.classification || jd.document_type || 'Unsupported Document')}</span>
+                    <span class="inline-flex items-center gap-2 ui-text-warning-title">
+                        <span class="w-3 h-3 rounded-full bg-amber-500 shrink-0"></span>
+                        <span class="font-bold">${escapeHtml(data.classification || jd.document_type || 'Unsupported Document')}</span>
                     </span>
                 `;
             } else {
                 if (unsupportedAlert) unsupportedAlert.classList.add('hidden');
-                document.getElementById('classificationBadge').textContent = data.classification || jd.document_type || 'Unknown';
+                document.getElementById('classificationBadge').innerHTML = `
+                    <span class="text-slate-900 dark:text-white font-bold">${escapeHtml(data.classification || jd.document_type || 'Unknown')}</span>
+                `;
             }
 
             document.getElementById('resultFilename').textContent = data.filename || '';
@@ -823,7 +1024,7 @@
             const hw = document.getElementById('handwrittenBadge');
             const isHw = jd.is_handwritten === true;
             hw.textContent = isHw ? 'Handwritten form' : 'Printed / statutory ID';
-            hw.className = 'px-2 py-0.5 rounded-md border font-medium ' + (isHw ? 'border-amber-600/30 bg-amber-500/15 text-amber-950 dark:text-amber-100' : 'border-slate-400/30 bg-slate-500/10 text-[var(--color-text)]');
+            hw.className = 'px-2.5 py-0.5 rounded-md border font-semibold ' + (isHw ? 'ui-pill-warning' : 'ui-pill-neutral');
 
             const overall = jd.overall_confidence;
             document.getElementById('overallConfBadge').textContent = overall !== undefined
@@ -873,16 +1074,16 @@
                 const reasonText = flagItem ? (flagItem.rationale || flagItem.reason) : (isFlagged ? `Confidence ${(score * 100).toFixed(0)}% is below ${(THRESHOLD * 100).toFixed(0)}% threshold` : '');
 
                 const tr = document.createElement('tr');
-                if (isFlagged) tr.className = 'bg-amber-500/10 dark:bg-amber-500/15';
+                if (isFlagged) tr.className = 'row-flagged-warning';
 
                 const status = isFlagged
-                    ? '<span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-amber-600/30 bg-amber-500/15 text-amber-800 dark:text-amber-200">   Needs Review</span>'
-                    : '<span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-emerald-600/30 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200">✓ Verified</span>';
+                    ? '<span class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full ui-pill-warning">Needs Review</span>'
+                    : '<span class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full ui-pill-success">✓ Verified</span>';
 
-                const scoreColor = isFlagged ? 'text-amber-700 dark:text-amber-400 font-bold' : 'text-emerald-700 dark:text-emerald-400 font-bold';
+                const scoreColor = isFlagged ? 'score-warn' : 'score-pass';
 
                 const tagMarkup = isFlagged
-                    ? `<div class="field-reason-note mt-1"><span class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30" title="${escapeHtml(reasonText)}">Below 0.85</span></div>`
+                    ? `<div class="field-reason-note mt-1"><span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded ui-pill-warning" title="${escapeHtml(reasonText)}">Below 0.85</span></div>`
                     : `<div class="field-reason-note hidden"></div>`;
 
                 const displayVal = val !== null && val !== undefined ? String(val) : '';
@@ -890,7 +1091,7 @@
 
                 tr.innerHTML = `
                     <td class="py-2.5 px-3">
-                        <div class="font-semibold text-xs text-[var(--color-text)]">${formatFieldName(key)}</div>
+                        <div class="font-bold text-xs text-[var(--color-text)]">${formatFieldName(key)}</div>
                         <div class="text-[10px] font-mono text-[var(--color-text-muted)]">${escapeHtml(key)}</div>
                         ${tagMarkup}
                     </td>
@@ -986,26 +1187,26 @@
 
                         return `<tr>
                             <td class="py-2.5 px-3">
-                                <div class="font-semibold text-xs text-[var(--color-text)]">${formatFieldName(fname)}</div>
+                                <div class="font-bold text-xs text-[var(--color-text)]">${formatFieldName(fname)}</div>
                                 <div class="text-[10px] font-mono text-[var(--color-text-muted)]">${escapeHtml(fname)}</div>
                                 <div class="text-[10px] text-[var(--color-text-secondary)] font-normal mt-0.5">${escapeHtml(docName || item.document_name || '')} &bull; ${escapeHtml(docType || item.document_type || '')}</div>
                             </td>
-                            <td class="font-mono text-xs text-amber-950 dark:text-amber-200 font-medium py-2.5 px-3">${escapeHtml(val)}</td>
-                            <td class="font-mono text-xs font-semibold text-amber-700 dark:text-amber-400 py-2.5 px-3 text-center">${scorePct}</td>
-                            <td class="font-mono text-xs text-[var(--color-text-secondary)] py-2.5 px-3 text-center">${threshPct}</td>
-                            <td class="text-xs text-amber-800 dark:text-amber-300 font-medium py-2.5 px-3">${escapeHtml(reason)}</td>
+                            <td class="font-mono text-xs font-bold py-2.5 px-3 text-[var(--color-text)]">${escapeHtml(val)}</td>
+                            <td class="font-mono text-xs font-bold score-warn py-2.5 px-3 text-center">${scorePct}</td>
+                            <td class="font-mono text-xs font-semibold text-[var(--color-text-secondary)] py-2.5 px-3 text-center">${threshPct}</td>
+                            <td class="text-xs font-semibold py-2.5 px-3 ui-text-warning-body">${escapeHtml(reason)}</td>
                         </tr>`;
                     }).join('');
                 }
 
                 if (flaggingBox) {
-                    flaggingBox.className = 'rounded-xl p-3.5 border border-amber-500/40 bg-amber-500/10 text-amber-950 dark:text-amber-100 text-sm font-medium';
+                    flaggingBox.className = 'rounded-xl p-4 ui-banner-warning text-sm font-medium';
                     flaggingBox.innerHTML = `
                         <div class="flex items-start gap-2.5">
-                            <span class="text-base leading-none mt-0.5">⚠️</span>
-                            <div>
-                                <div class="font-bold text-amber-950 dark:text-amber-100">Out-of-Scope Document (${escapeHtml(report.detected_type || 'Unrecognized Format')})</div>
-                                <div class="text-xs text-amber-900/80 dark:text-amber-200/80 mt-0.5 font-normal leading-relaxed">
+                            <span class="text-lg leading-none mt-0.5">⚠️</span>
+                            <div class="space-y-1">
+                                <div class="ui-text-warning-title text-sm">Out-of-Scope Document (${escapeHtml(report.detected_type || 'Unrecognized Format')})</div>
+                                <div class="ui-text-warning-body text-xs">
                                     ${escapeHtml(report.unsupported_reason || 'This document does not match any of the 10 supported KYC and insurance proposal form schemas. Automated straight-through onboarding is disabled.')}
                                 </div>
                             </div>
@@ -1013,12 +1214,12 @@
                 }
 
                 if (statFlaggedBadge) {
-                    statFlaggedBadge.className = 'px-2.5 py-1 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-100 font-mono text-xs font-semibold';
+                    statFlaggedBadge.className = 'px-2.5 py-1 rounded-lg font-mono text-xs ui-pill-warning';
                     statFlaggedBadge.textContent = 'Out-of-Scope Format';
                 }
 
                 if (flaggingSectionBadge) {
-                    flaggingSectionBadge.className = 'text-[11px] px-2.5 py-0.5 rounded-full font-medium border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200';
+                    flaggingSectionBadge.className = 'text-[11px] px-2.5 py-0.5 rounded-full font-medium ui-pill-warning';
                     flaggingSectionBadge.textContent = 'Out-of-Scope (Review Required)';
                 }
             } else if (needsReview) {
@@ -1035,26 +1236,26 @@
 
                         return `<tr>
                             <td class="py-2.5 px-3">
-                                <div class="font-semibold text-xs text-[var(--color-text)]">${formatFieldName(fname)}</div>
+                                <div class="font-bold text-xs text-[var(--color-text)]">${formatFieldName(fname)}</div>
                                 <div class="text-[10px] font-mono text-[var(--color-text-muted)]">${escapeHtml(fname)}</div>
                                 <div class="text-[10px] text-[var(--color-text-secondary)] font-normal mt-0.5">${escapeHtml(docName || item.document_name || '')} &bull; ${escapeHtml(docType || item.document_type || '')}</div>
                             </td>
-                            <td class="font-mono text-xs text-amber-950 dark:text-amber-200 font-medium py-2.5 px-3">${escapeHtml(val)}</td>
-                            <td class="font-mono text-xs font-semibold text-amber-700 dark:text-amber-400 py-2.5 px-3 text-center">${scorePct}</td>
-                            <td class="font-mono text-xs text-[var(--color-text-secondary)] py-2.5 px-3 text-center">${threshPct}</td>
-                            <td class="text-xs text-amber-800 dark:text-amber-300 font-medium py-2.5 px-3">${escapeHtml(reason)}</td>
+                            <td class="font-mono text-xs font-bold py-2.5 px-3 text-[var(--color-text)]">${escapeHtml(val)}</td>
+                            <td class="font-mono text-xs font-bold score-warn py-2.5 px-3 text-center">${scorePct}</td>
+                            <td class="font-mono text-xs font-semibold text-[var(--color-text-secondary)] py-2.5 px-3 text-center">${threshPct}</td>
+                            <td class="text-xs font-semibold py-2.5 px-3 ui-text-warning-body">${escapeHtml(reason)}</td>
                         </tr>`;
                     }).join('');
                 }
 
                 if (flaggingBox) {
-                    flaggingBox.className = 'rounded-xl p-3.5 border border-amber-500/40 bg-amber-500/10 text-amber-950 dark:text-amber-100 text-sm font-medium';
+                    flaggingBox.className = 'rounded-xl p-4 ui-banner-warning text-sm font-medium';
                     flaggingBox.innerHTML = `
                         <div class="flex items-start gap-2.5">
-                            <span class="text-base leading-none mt-0.5">⚠️</span>
-                            <div>
-                                <div class="font-bold text-amber-950 dark:text-amber-100">Human Review Required (${flaggedList.length} field${flaggedList.length === 1 ? '' : 's'})</div>
-                                <div class="text-xs text-amber-900/80 dark:text-amber-200/80 mt-0.5 font-normal leading-relaxed">
+                            <span class="text-lg leading-none mt-0.5">⚠️</span>
+                            <div class="space-y-1">
+                                <div class="ui-text-warning-title text-sm">Human Review Required (${flaggedList.length} field${flaggedList.length === 1 ? '' : 's'})</div>
+                                <div class="ui-text-warning-body text-xs">
                                     ${flaggedList.length} field${flaggedList.length === 1 ? '' : 's'} fell below the ${THRESHOLD} (85%) confidence threshold. Auditor verification can be applied directly in the Extracted Fields workspace.
                                 </div>
                             </div>
@@ -1062,25 +1263,25 @@
                 }
 
                 if (statFlaggedBadge) {
-                    statFlaggedBadge.className = 'px-2.5 py-1 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-100 font-mono text-xs font-semibold';
+                    statFlaggedBadge.className = 'px-2.5 py-1 rounded-lg font-mono text-xs ui-pill-warning';
                     statFlaggedBadge.innerHTML = `Review Required: <strong>${flaggedList.length}</strong>`;
                 }
 
                 if (flaggingSectionBadge) {
-                    flaggingSectionBadge.className = 'text-[11px] px-2.5 py-0.5 rounded-full font-medium border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200';
+                    flaggingSectionBadge.className = 'text-[11px] px-2.5 py-0.5 rounded-full font-medium ui-pill-warning';
                     flaggingSectionBadge.textContent = `${flaggedList.length} field(s) require review`;
                 }
             } else {
                 if (container) container.classList.add('hidden');
 
                 if (flaggingBox) {
-                    flaggingBox.className = 'rounded-xl p-3.5 border border-emerald-600/30 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100 text-sm font-medium';
+                    flaggingBox.className = 'rounded-xl p-4 ui-banner-success text-sm font-medium';
                     flaggingBox.innerHTML = `
                         <div class="flex items-start gap-2.5">
-                            <span class="text-base leading-none text-emerald-600 dark:text-emerald-400 mt-0.5">✓</span>
-                            <div>
-                                <div class="font-bold text-emerald-950 dark:text-emerald-100">Straight-Through Approved (100% Compliant)</div>
-                                <div class="text-xs text-emerald-900/80 dark:text-emerald-200/80 mt-0.5 font-normal leading-relaxed">
+                            <span class="text-lg leading-none text-emerald-600 dark:text-emerald-400 mt-0.5">✓</span>
+                            <div class="space-y-1">
+                                <div class="ui-text-success-title text-sm">Straight-Through Approved (100% Compliant)</div>
+                                <div class="ui-text-success-body text-xs">
                                     All extracted fields meet or exceed the ${THRESHOLD} (85%) confidence threshold. No manual intervention required.
                                 </div>
                             </div>
@@ -1088,12 +1289,12 @@
                 }
 
                 if (statFlaggedBadge) {
-                    statFlaggedBadge.className = 'px-2.5 py-1 rounded-lg border border-emerald-600/25 bg-emerald-600/10 text-emerald-900 dark:text-emerald-200 font-mono text-xs font-semibold';
+                    statFlaggedBadge.className = 'px-2.5 py-1 rounded-lg font-mono text-xs ui-pill-success';
                     statFlaggedBadge.textContent = 'Straight-through Approved';
                 }
 
                 if (flaggingSectionBadge) {
-                    flaggingSectionBadge.className = 'text-[11px] px-2.5 py-0.5 rounded-full font-medium border border-emerald-600/30 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200';
+                    flaggingSectionBadge.className = 'text-[11px] px-2.5 py-0.5 rounded-full font-medium ui-pill-success';
                     flaggingSectionBadge.textContent = 'Passed (100% compliant)';
                 }
             }
