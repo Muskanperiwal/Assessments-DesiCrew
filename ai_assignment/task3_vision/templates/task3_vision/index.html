@@ -16,9 +16,14 @@
             background: var(--color-teal-soft) !important;
         }
 
-        /* ==========================================================================
-           Industry-Standard High-Contrast Semantic Design System Tokens (WCAG AAA)
-           ========================================================================== */
+        /* 0. High-Contrast Document Titles (Never white in light mode) */
+        .doc-title-text {
+            color: #0f172a !important; /* Deep Slate 900 */
+        }
+        html[data-theme="dark"] .doc-title-text,
+        html.dark .doc-title-text {
+            color: #f8fafc !important; /* Slate 50 */
+        }
 
         /* 1. Accessible Warning / Out-of-Scope Banner */
         .ui-banner-warning {
@@ -313,10 +318,11 @@
         </div>
     </header>
 
-    <main class="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-5">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5">
+    <main class="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-5">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
 
-            <div class="lg:col-span-4 space-y-3">
+            <!-- LEFT SIDEBAR: Upload, Sample Corpus & Methodology Specifications -->
+            <div class="lg:col-span-3 space-y-3.5">
                 <div class="glass-panel rounded-2xl p-4">
                     <p class="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)] mb-2">Upload</p>
                     <form id="uploadForm" onsubmit="handleFormSubmit(event)">
@@ -350,12 +356,21 @@
                 </div>
                 {% endif %}
 
+                <!-- Methodology, Handwriting Analysis & Failure Modes Section (Moved below left bar) -->
+                <details class="glass-panel rounded-2xl p-4 text-xs text-[var(--color-text-secondary)]">
+                    <summary class="font-semibold text-[var(--color-text)] cursor-pointer">Methodology &amp; OCR Analysis</summary>
+                    <div class="mt-3 leading-relaxed space-y-3 font-normal max-h-96 overflow-y-auto pr-1">
+                        <div class="prose dark:prose-invert max-w-none text-xs leading-relaxed whitespace-pre-line">{{ methodology_note }}</div>
+                    </div>
+                </details>
+
                 <p class="text-xs text-[var(--color-text-secondary)] leading-relaxed px-1">
-                    {{ document_types|length }} document types · classification, field extraction, per-field confidence, and flagging for human review.
+                    {{ document_types|length }} document types &bull; classification, field extraction, per-field confidence, and flagging for human review.
                 </p>
             </div>
 
-            <div class="lg:col-span-8 space-y-3 min-h-[320px]">
+            <!-- RIGHT WORKSPACE: Batch Pipeline, Document Card & Extracted Fields -->
+            <div class="lg:col-span-9 space-y-3.5 min-h-[320px]">
 
                 <div id="docPreview" class="hidden glass-panel rounded-2xl p-4">
                     <p class="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)] mb-2">Source document</p>
@@ -384,20 +399,21 @@
 
                 <div id="resultsContainer" class="hidden space-y-3">
 
-                    <div class="glass-panel rounded-2xl p-4 sm:p-5 flex flex-col gap-2.5">
-                        <div class="flex items-center justify-between gap-3">
-                            <p id="resultFilename" class="text-xs font-mono text-[var(--color-text-secondary)] truncate"></p>
-                            <div class="flex items-center gap-2">
-                                <span class="glass-inset px-2.5 py-1 rounded-lg text-xs font-mono text-[var(--color-text)]">
-                                    Fields <strong id="statFieldsCount">0</strong><span id="statExpectedSuffix"></span>
-                                </span>
-                                <span id="headerCompliancePill" class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium"></span>
+                    <div class="glass-panel rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
+                        <div class="space-y-1.5 min-w-0">
+                            <div class="flex items-center gap-3 flex-wrap">
+                                <h2 id="classificationBadge" class="text-xl sm:text-2xl font-bold doc-title-text tracking-tight truncate"></h2>
+                                <span id="handwrittenBadge" class="px-2.5 py-0.5 rounded-md border text-xs font-semibold"></span>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs text-[var(--color-text-secondary)] font-mono flex-wrap">
+                                <span id="resultFilename" class="font-bold text-[var(--color-text)]"></span>
+                                <span>&bull;</span>
+                                <span id="statFieldsSummary">0 fields</span>
                             </div>
                         </div>
-                        <h2 id="classificationBadge" class="text-xl sm:text-2xl font-bold text-[var(--color-text)] tracking-tight truncate"></h2>
-                        <div class="flex flex-wrap gap-2 text-xs">
-                            <span id="handwrittenBadge" class="px-2.5 py-0.5 rounded-md border font-medium"></span>
-                            <span id="overallConfBadge" class="px-2.5 py-0.5 rounded-md glass-inset font-mono text-[var(--color-text)]"></span>
+                        <div class="flex items-center gap-2.5 shrink-0 flex-wrap">
+                            <span id="overallConfBadge" class="px-3 py-1.5 rounded-xl font-mono text-xs font-bold glass-inset text-[var(--color-text)] border border-black/5 dark:border-white/10"></span>
+                            <span id="headerCompliancePill" class="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold"></span>
                         </div>
                     </div>
 
@@ -433,15 +449,11 @@
 
                     <!-- TAB 1: Main Extracted Fields Table (Full Width, Enterprise HITL Workspace) -->
                     <div id="extractedFieldsSection" class="glass-panel rounded-2xl p-4 sm:p-5 overflow-hidden task3-table space-y-4">
-                        <div class="flex flex-col gap-2 pb-3 border-b border-black/10 dark:border-white/10">
-                            <div class="flex items-center gap-2.5">
-                                <h3 class="text-sm font-bold text-[var(--color-text)] tracking-tight">Extracted Document Fields</h3>
-                                <span id="statFieldsBadge" class="text-[11px] px-2 py-0.5 rounded-md font-mono font-semibold bg-black/5 dark:bg-white/10 text-[var(--color-text-secondary)]"></span>
-                            </div>
+                        <div class="flex flex-col gap-1 pb-3 border-b border-black/10 dark:border-white/10">
+                            <h3 class="text-sm font-bold text-[var(--color-text)] tracking-tight">Extracted Document Fields</h3>
                             <p class="text-xs text-[var(--color-text-secondary)]">
                                 Human-in-the-Loop review workspace &bull; Inline corrections recalculate confidence scores instantly
                             </p>
-                            <div id="complianceStatusPill" class="pt-1"></div>
                         </div>
 
                         <div class="overflow-x-auto rounded-xl glass-inset">
@@ -554,14 +566,6 @@
                             <pre class="code-surface text-xs leading-relaxed p-4 rounded-xl overflow-auto max-h-[500px] border border-black/5 dark:border-white/5 font-mono"><code id="jsonOutput"></code></pre>
                         </div>
                     </div>
-
-                    <!-- Methodology, Handwriting Analysis & Failure Modes Section -->
-                    <details class="glass-panel rounded-2xl p-4 text-xs text-[var(--color-text-secondary)]">
-                        <summary class="font-semibold text-[var(--color-text)] cursor-pointer">Methodology, Handwriting Analysis &amp; Failure Modes</summary>
-                        <div class="mt-3 leading-relaxed space-y-3 font-normal">
-                            <div class="prose dark:prose-invert max-w-none text-xs leading-relaxed whitespace-pre-line">{{ methodology_note }}</div>
-                        </div>
-                    </details>
                 </div>
             </div>
         </div>
@@ -931,54 +935,18 @@
         }
 
         function renderComplianceStatusPill(flaggedCount, isSupported = true) {
-            const pill = document.getElementById('complianceStatusPill');
             const headerPill = document.getElementById('headerCompliancePill');
             if (headerPill) {
                 if (!isSupported) {
-                    headerPill.className = "inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ui-pill-warning";
-                    headerPill.textContent = "Out-of-Scope Document";
+                    headerPill.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold ui-pill-warning shadow-sm";
+                    headerPill.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-600 animate-pulse"></span><span>Out-of-Scope Document</span>`;
                 } else if (flaggedCount > 0) {
-                    headerPill.className = "inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ui-pill-warning";
-                    headerPill.textContent = `${flaggedCount} Below 0.85`;
+                    headerPill.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold ui-pill-warning shadow-sm";
+                    headerPill.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-600 animate-pulse"></span><span>${flaggedCount} ${flaggedCount === 1 ? 'Field' : 'Fields'} Below 0.85</span>`;
                 } else {
-                    headerPill.className = "inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ui-pill-success";
-                    headerPill.textContent = "Straight-through Approved";
+                    headerPill.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold ui-pill-success shadow-sm";
+                    headerPill.innerHTML = `<span>&check;</span><span>Straight-Through Approved</span>`;
                 }
-            }
-            if (!pill) return;
-            if (!isSupported) {
-                pill.innerHTML = `
-                    <div class="flex items-center gap-2.5">
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold ui-pill-warning shadow-sm">
-                            <span class="w-2 h-2 rounded-full bg-amber-600 animate-pulse"></span>
-                            <span>Out-of-Scope Document</span>
-                        </span>
-                        <button type="button" onclick="switchResultTab('flagging')" class="text-xs font-bold text-teal-700 dark:text-teal-400 hover:underline shrink-0 flex items-center gap-1">
-                            <span>Compliance Report &rarr;</span>
-                        </button>
-                    </div>
-                `;
-                return;
-            }
-            if (flaggedCount > 0) {
-                pill.innerHTML = `
-                    <div class="flex items-center gap-2.5">
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold ui-pill-warning shadow-sm">
-                            <span class="w-2 h-2 rounded-full bg-amber-600 animate-pulse"></span>
-                            <span>${flaggedCount} ${flaggedCount === 1 ? 'Field Below' : 'Fields Below'} 0.85</span>
-                        </span>
-                        <button type="button" onclick="switchResultTab('flagging')" class="text-xs font-bold text-teal-700 dark:text-teal-400 hover:underline shrink-0 flex items-center gap-1">
-                            <span>View Flagging Report &rarr;</span>
-                        </button>
-                    </div>
-                `;
-            } else {
-                pill.innerHTML = `
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold ui-pill-success shadow-sm">
-                        <span>&check;</span>
-                        <span>Straight-Through Approved (&ge; 0.85)</span>
-                    </span>
-                `;
             }
         }
 
@@ -1006,13 +974,13 @@
                 document.getElementById('classificationBadge').innerHTML = `
                     <span class="inline-flex items-center gap-2 ui-text-warning-title">
                         <span class="w-3 h-3 rounded-full bg-amber-500 shrink-0"></span>
-                        <span class="font-bold">${escapeHtml(data.classification || jd.document_type || 'Unsupported Document')}</span>
+                        <span>${escapeHtml(data.classification || jd.document_type || 'Unsupported Document')}</span>
                     </span>
                 `;
             } else {
                 if (unsupportedAlert) unsupportedAlert.classList.add('hidden');
                 document.getElementById('classificationBadge').innerHTML = `
-                    <span class="text-slate-900 dark:text-white font-bold">${escapeHtml(data.classification || jd.document_type || 'Unknown')}</span>
+                    <span class="doc-title-text">${escapeHtml(data.classification || jd.document_type || 'Unknown')}</span>
                 `;
             }
 
@@ -1021,12 +989,15 @@
             const hw = document.getElementById('handwrittenBadge');
             const isHw = jd.is_handwritten === true;
             hw.textContent = isHw ? 'Handwritten form' : 'Printed / statutory ID';
-            hw.className = 'px-2.5 py-0.5 rounded-md border font-semibold ' + (isHw ? 'ui-pill-warning' : 'ui-pill-neutral');
+            hw.className = 'px-2.5 py-0.5 rounded-md text-xs font-semibold ' + (isHw ? 'ui-pill-warning' : 'ui-pill-neutral');
 
             const overall = jd.overall_confidence;
-            document.getElementById('overallConfBadge').textContent = overall !== undefined
-                ? `Overall confidence ${(overall * 100).toFixed(1)}%`
-                : '';
+            const overallBadge = document.getElementById('overallConfBadge');
+            if (overallBadge) {
+                overallBadge.textContent = overall !== undefined
+                    ? `${(overall * 100).toFixed(0)}% Confidence`
+                    : '';
+            }
 
             const extracted = jd.extracted_data || jd.fields || {};
             const tableBody = document.getElementById('fieldsTableBody');
@@ -1035,10 +1006,10 @@
             const keys = Object.keys(extracted);
             const report = data.flagging_report || {};
             const expectedN = report.expected_field_count;
-            document.getElementById('statFieldsCount').textContent = keys.length;
-            document.getElementById('statExpectedSuffix').textContent = expectedN ? ` / ${expectedN} expected` : '';
-            const fieldsBadge = document.getElementById('statFieldsBadge');
-            if (fieldsBadge) fieldsBadge.textContent = `${keys.length} fields`;
+            const statSummary = document.getElementById('statFieldsSummary');
+            if (statSummary) {
+                statSummary.textContent = expectedN ? `${keys.length} of ${expectedN} fields verified` : `${keys.length} fields`;
+            }
 
             const flaggedList = report.flagged_fields || [];
             const docName = data.filename || '';
