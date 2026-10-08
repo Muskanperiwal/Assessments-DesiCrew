@@ -9,9 +9,11 @@ Handles:
 """
 import os
 import re
+import io
 import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+from PIL import Image
 
 try:
     import pymupdf  # PyMuPDF
@@ -365,6 +367,251 @@ class SupportRAGEngine:
             )
         return "\n".join(context_blocks)
 
+    def get_uploaded_documents(self) -> List[Dict[str, Any]]:
+        """Returns list of custom uploaded documents."""
+        uploads_dir = self.docs_dir / 'uploads'
+        if not uploads_dir.exists():
+            return []
+        docs = []
+        for p in sorted(uploads_dir.iterdir()):
+            if p.is_file() and p.suffix.lower() in ('.pdf', '.png', '.jpg', '.jpeg', '.webp'):
+                docs.append({
+                    "name": p.name,
+                    "is_pdf": p.suffix.lower() == '.pdf',
+                    "size": p.stat().st_size
+                })
+        return docs
+
+    def ocr_image(self, img_bytes: bytes) -> str:
+        """Extracts text from image bytes using Gemini Vision models with key failover."""
+        keys_pool = getattr(settings, 'GEMINI_API_KEYS', [])
+        single_key = getattr(settings, 'GEMINI_API_KEY', '')
+        if single_key and single_key not in keys_pool:
+            keys_pool = [single_key] + keys_pool
+
+        try:
+            import google.generativeai as genai
+            img = Image.open(io.BytesIO(img_bytes))
+            prompt = (
+                "You are an expert document OCR engine. Transcribe all text, headings, bullet points, "
+                "numbers, and tables from this document image with high fidelity. "
+                "Format main headings with markdown (e.g. ## Section Name). "
+                "Preserve all specific names, dates, amounts, and figures verbatim."
+            )
+
+            models = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-2.0-flash', 'gemini-flash-latest']
+            for key in keys_pool:
+                if not key:
+                    continue
+                try:
+                    genai.configure(api_key=key)
+                    for model_name in models:
+                        try:
+                            m = genai.GenerativeModel(model_name)
+                            res = m.generate_content([prompt, img])
+                            if res and res.text and len(res.text.strip()) > 5:
+                                return res.text.strip()
+                        except Exception:
+                            continue
+                except Exception:
+                    continue
+        except Exception as e:
+            logger.error(f"Error during OCR image transcription: {e}")
+
+        return ""
+
+    def index_custom_document(self, file_bytes: bytes, filename: str, mime_type: str = '') -> Dict[str, Any]:
+        """Scans, parses, chunks, and indexes a user-uploaded PDF or Image into the knowledge base."""
+        ext = Path(filename).suffix.lower()
+        if ext not in ('.pdf', '.png', '.jpg', '.jpeg', '.webp'):
+            return {
+                "success": False,
+                "error": f"Unsupported file type '{ext}'. Please upload a PDF or image (.png, .jpg, .webp)."
+            }
+
+        # Save uploaded file to uploads directory
+        uploads_dir = self.docs_dir / 'uploads'
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+        safe_name = re.sub(r'[^\w\.\-]', '_', filename)
+        save_path = uploads_dir / safe_name
+        with open(save_path, 'wb') as f:
+            f.write(file_bytes)
+
+        chunks: List[DocumentChunk] = []
+        file_stem = Path(safe_name).stem.replace('_', ' ')
+        pages_count = 1
+
+        if ext == '.pdf' and pymupdf is not None:
+            try:
+                doc = pymupdf.open(stream=file_bytes, filetype="pdf")
+                pages_count = len(doc)
+                for page_idx in range(pages_count):
+                    page_num = page_idx + 1
+                    page = doc[page_idx]
+                    raw_text = page.get_text() or ""
+                    
+                    # If page has virtually no text (e.g. scanned image PDF), OCR the rendered pixmap
+                    if len(raw_text.strip()) < 30:
+                        try:
+                            pix = page.get_pixmap(dpi=150)
+                            ocr_text = self.ocr_image(pix.tobytes("png"))
+                            if ocr_text:
+                                raw_text = ocr_text
+                        except Exception as ocr_err:
+                            logger.warning(f"OCR failed for PDF page {page_num}: {ocr_err}")
+
+                    if not raw_text.strip():
+                        continue
+
+                    section_title = self._extract_section_title(raw_text, fallback=f"{file_stem} - Page {page_num}")
+                    paragraphs = [p.strip() for p in raw_text.split('\n\n') if len(p.strip()) > 30]
+                    if not paragraphs:
+                        paragraphs = [raw_text.strip()]
+
+                    for p_idx, para in enumerate(paragraphs, 1):
+                        chunk_id = f"custom_{Path(safe_name).stem}_p{page_num}_c{p_idx}"
+                        chunks.append(DocumentChunk(
+                            chunk_id=chunk_id,
+                            text=para,
+                            source_file=safe_name,
+                            page_number=page_num,
+                            section_title=section_title
+                        ))
+                doc.close()
+            except Exception as pdf_err:
+                logger.error(f"Error parsing custom PDF {filename}: {pdf_err}")
+                return {"success": False, "error": f"Failed to parse PDF: {pdf_err}"}
+
+        elif ext in ('.png', '.jpg', '.jpeg', '.webp'):
+            pages_count = 1
+            raw_text = self.ocr_image(file_bytes)
+            if not raw_text.strip():
+                raw_text = f"Document: {file_stem}. Scanned image document."
+
+            section_title = self._extract_section_title(raw_text, fallback=f"{file_stem} Overview")
+            paragraphs = [p.strip() for p in raw_text.split('\n\n') if len(p.strip()) > 30]
+            if not paragraphs:
+                paragraphs = [raw_text.strip()]
+
+            for p_idx, para in enumerate(paragraphs, 1):
+                chunk_id = f"custom_{Path(safe_name).stem}_p1_c{p_idx}"
+                chunks.append(DocumentChunk(
+                    chunk_id=chunk_id,
+                    text=para,
+                    source_file=safe_name,
+                    page_number=1,
+                    section_title=section_title
+                ))
+
+        if not chunks:
+            return {
+                "success": False,
+                "error": "No readable text could be extracted from this document."
+            }
+
+        # Index new chunks into ChromaDB
+        if self._collection is not None:
+            try:
+                ids = [c.chunk_id for c in chunks]
+                docs = [c.text for c in chunks]
+                metadatas = [c.to_metadata() for c in chunks]
+                self._collection.upsert(ids=ids, documents=docs, metadatas=metadatas)
+            except Exception as chroma_err:
+                logger.error(f"Error upserting custom chunks to ChromaDB: {chroma_err}")
+
+        # Also add to in-memory chunks for lexical fallback
+        self._in_memory_chunks.extend(chunks)
+
+        total_chunks = (
+            self._collection.count()
+            if self._collection and self._collection.count() > 0
+            else len(self._in_memory_chunks)
+        )
+
+        return {
+            "success": True,
+            "filename": safe_name,
+            "is_pdf": (ext == '.pdf'),
+            "pages_scanned": pages_count,
+            "chunks_added": len(chunks),
+            "total_chunks": total_chunks,
+            "initial_topic": chunks[0].section_title if chunks else file_stem
+        }
+
+    def delete_custom_document(self, filename: str) -> Dict[str, Any]:
+        """Safely removes a user-uploaded custom document from disk, in-memory chunks, and ChromaDB."""
+        safe_name = os.path.basename(filename).strip()
+        safe_name = re.sub(r'[^\w\.\-]', '_', safe_name)
+
+        # Disallow deletion of baseline grounding documents
+        base_protected = {
+            'Customer_Support_Policy.pdf',
+            'Subscription_Billing_Guide.pdf',
+            'Account_Security_Privacy.pdf',
+            'customer_support_policy.md',
+            'subscription_billing_guide.md',
+            'account_security_privacy.md'
+        }
+        if safe_name.lower() in {p.lower() for p in base_protected}:
+            return {
+                "success": False,
+                "error": f"Document '{safe_name}' is a core system policy document and cannot be removed."
+            }
+
+        uploads_dir = (self.docs_dir / 'uploads').resolve()
+        target_file = (uploads_dir / safe_name).resolve()
+
+        # Security check: must reside inside uploads_dir
+        if not str(target_file).startswith(str(uploads_dir)):
+            return {
+                "success": False,
+                "error": "Invalid file path target."
+            }
+
+        # 1. Remove physical file if present
+        if target_file.exists() and target_file.is_file():
+            try:
+                target_file.unlink()
+            except Exception as e:
+                logger.warning(f"Could not unlink file {target_file}: {e}")
+
+        # 2. Remove from in-memory chunks
+        stem_prefix = f"custom_{Path(safe_name).stem}_"
+        self._in_memory_chunks = [
+            c for c in self._in_memory_chunks
+            if c.source_file != safe_name and not c.chunk_id.startswith(stem_prefix)
+        ]
+
+        # 3. Remove from ChromaDB collection
+        if self._collection is not None:
+            try:
+                # Find IDs by source_file metadata or ID prefix
+                res = self._collection.get()
+                matching_ids = []
+                for item_id, meta in zip(res.get('ids', []), res.get('metadatas', [])):
+                    if meta and meta.get('source_file') == safe_name:
+                        matching_ids.append(item_id)
+                    elif item_id.startswith(stem_prefix):
+                        matching_ids.append(item_id)
+                if matching_ids:
+                    self._collection.delete(ids=matching_ids)
+                    logger.info(f"Deleted {len(matching_ids)} chunks from ChromaDB for {safe_name}")
+            except Exception as chroma_err:
+                logger.error(f"Error deleting chunks from ChromaDB for {safe_name}: {chroma_err}")
+
+        total_chunks = (
+            self._collection.count()
+            if self._collection and self._collection.count() > 0
+            else len(self._in_memory_chunks)
+        )
+
+        return {
+            "success": True,
+            "filename": safe_name,
+            "total_chunks": total_chunks,
+            "message": f"Document '{safe_name}' has been removed successfully."
+        }
+
 
 # Singleton engine instance
 RAG_ENGINE = SupportRAGEngine()
@@ -379,5 +626,20 @@ def get_relevant_context(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
 def format_context(chunks: List[Dict[str, Any]]) -> str:
     """Global utility accessor for prompt context formatting."""
     return RAG_ENGINE.format_context_for_prompt(chunks)
+
+
+def index_custom_document(file_bytes: bytes, filename: str, mime_type: str = '') -> Dict[str, Any]:
+    """Global utility accessor to index custom documents."""
+    return RAG_ENGINE.index_custom_document(file_bytes, filename, mime_type)
+
+
+def delete_custom_document(filename: str) -> Dict[str, Any]:
+    """Global utility accessor to delete custom documents."""
+    return RAG_ENGINE.delete_custom_document(filename)
+
+
+def get_uploaded_documents() -> List[Dict[str, Any]]:
+    """Global utility accessor for uploaded documents list."""
+    return RAG_ENGINE.get_uploaded_documents()
 
 

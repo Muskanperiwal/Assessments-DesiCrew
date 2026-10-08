@@ -209,23 +209,51 @@
                 </div>
 
                 <!-- Card 4: Indexed Support Knowledge Base -->
-                <div class="glass-inset rounded-[var(--radius-lg)] p-3 border border-[var(--color-border)] space-y-2">
+                <div class="glass-inset rounded-[var(--radius-lg)] p-3 border border-[var(--color-border)] space-y-2.5">
                     <div class="flex items-center justify-between">
                         <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Knowledge Base</span>
-                        <span class="text-[10px] font-mono text-[var(--color-teal)] font-medium">18 Chunks</span>
+                        <span id="kbChunkBadge" class="text-[10px] font-mono text-[var(--color-teal)] font-medium">{{ indexed_chunks_count }} Chunks</span>
                     </div>
-                    <div class="space-y-1.5 text-[11px]">
+                    <div id="kbFileList" class="space-y-1.5 text-[11px] max-h-36 overflow-y-auto pr-0.5">
                         <div class="flex items-center gap-1.5 text-[var(--color-text-secondary)]">
-                            <span class="text-red-500 font-bold text-[9px]">PDF</span>
+                            <span class="text-red-500 font-bold text-[9px] px-1 py-0.2 rounded bg-red-500/10 shrink-0">PDF</span>
                             <span class="truncate" title="Customer_Support_Policy.pdf">Customer_Support_Policy.pdf</span>
                         </div>
                         <div class="flex items-center gap-1.5 text-[var(--color-text-secondary)]">
-                            <span class="text-red-500 font-bold text-[9px]">PDF</span>
+                            <span class="text-red-500 font-bold text-[9px] px-1 py-0.2 rounded bg-red-500/10 shrink-0">PDF</span>
                             <span class="truncate" title="Subscription_Billing_Guide.pdf">Subscription_Billing_Guide.pdf</span>
                         </div>
                         <div class="flex items-center gap-1.5 text-[var(--color-text-secondary)]">
-                            <span class="text-red-500 font-bold text-[9px]">PDF</span>
+                            <span class="text-red-500 font-bold text-[9px] px-1 py-0.2 rounded bg-red-500/10 shrink-0">PDF</span>
                             <span class="truncate" title="Account_Security_Privacy.pdf">Account_Security_Privacy.pdf</span>
+                        </div>
+                        {% for uf in uploaded_files %}
+                        <div class="flex items-center justify-between gap-1 text-[var(--color-text-secondary)] group hover:text-[var(--color-text)] transition-colors" data-file="{{ uf.name }}">
+                            <div class="flex items-center gap-1.5 min-w-0">
+                                <span class="{% if uf.is_pdf %}text-red-500 bg-red-500/10{% else %}text-emerald-500 bg-emerald-500/10{% endif %} font-bold text-[9px] px-1 py-0.2 rounded shrink-0">{% if uf.is_pdf %}PDF{% else %}IMG{% endif %}</span>
+                                <span class="truncate" title="{{ uf.name }}">{{ uf.name }}</span>
+                            </div>
+                            <button type="button" onclick="deleteUploadedDocument('{{ uf.name }}', this)" title="Remove {{ uf.name }}" class="text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-500/10 p-0.5 rounded transition-all shrink-0" aria-label="Remove {{ uf.name }}">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Custom Document Upload Action -->
+                    <div class="pt-2 border-t border-[var(--color-border)]/70">
+                        <input type="file" id="customDocInput" accept=".pdf,image/png,image/jpeg,image/webp,image/jpg" class="hidden" onchange="uploadCustomDocument(this.files[0])">
+                        <button type="button" onclick="document.getElementById('customDocInput').click()" id="uploadDocBtn" class="btn btn-ghost btn-sm w-full text-xs justify-center py-1.5 font-medium border border-dashed border-[var(--color-border)] hover:border-[var(--color-teal)] hover:bg-[var(--color-teal-soft)] hover:text-[var(--color-teal)] flex items-center gap-1.5 transition-all">
+                            <svg class="w-3.5 h-3.5 text-[var(--color-teal)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            <span>Add Custom PDF / Image</span>
+                        </button>
+                        <div id="uploadStatusLine" class="hidden mt-1.5 text-[10px] text-center text-[var(--color-teal)] flex items-center justify-center gap-1.5 font-medium">
+                            <svg class="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+                            <span id="uploadStatusText">Scanning & indexing document…</span>
                         </div>
                     </div>
                 </div>
@@ -263,7 +291,7 @@
                 </div>
 
                 <div class="flex items-center gap-2 flex-shrink-0">
-                    <span class="badge hidden sm:inline-flex text-[11px]">{{ indexed_chunks_count }} chunks</span>
+                    <span id="headerChunksBadge" class="badge hidden sm:inline-flex text-[11px]">{{ indexed_chunks_count }} chunks</span>
                     <span id="turnCounterBadge" class="badge font-mono text-[11px]">Turn <span id="currentTurn">0</span>/10</span>
                     <button type="button" onclick="run10TurnDemo()" id="demoBtn" class="btn btn-secondary btn-sm text-xs">10-Turn Demo</button>
                     <button type="button" onclick="askReset()" class="btn btn-ghost btn-sm text-xs">Reset</button>
@@ -818,6 +846,190 @@
             demoBtn.disabled = false;
             demoBtn.textContent = '10-Turn Demo';
             setChatBusy(false);
+        }
+
+        async function uploadCustomDocument(file) {
+            if (!file) return;
+            const uploadBtn = document.getElementById('uploadDocBtn');
+            const uploadStatusLine = document.getElementById('uploadStatusLine');
+            const uploadStatusText = document.getElementById('uploadStatusText');
+            const customDocInput = document.getElementById('customDocInput');
+
+            uploadBtn.disabled = true;
+            uploadBtn.classList.add('opacity-50');
+            uploadStatusLine.classList.remove('hidden');
+            uploadStatusText.textContent = `Scanning & indexing "${file.name}"…`;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const csrftoken = getCookie('csrftoken');
+            try {
+                const response = await fetch('/task2/api/upload/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'Failed to scan and index document.');
+                }
+
+                // 1. Update chunk counts in UI
+                const kbChunkBadge = document.getElementById('kbChunkBadge');
+                const headerChunksBadge = document.getElementById('headerChunksBadge');
+                if (kbChunkBadge) kbChunkBadge.textContent = `${data.total_chunks} Chunks`;
+                if (headerChunksBadge) headerChunksBadge.textContent = `${data.total_chunks} chunks`;
+
+                // 2. Append new file to Knowledge Base list in sidebar
+                const kbFileList = document.getElementById('kbFileList');
+                if (kbFileList) {
+                    const tagClass = data.is_pdf ? 'text-red-500 bg-red-500/10' : 'text-emerald-500 bg-emerald-500/10';
+                    const tagLabel = data.is_pdf ? 'PDF' : 'IMG';
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center justify-between gap-1 text-[var(--color-text-secondary)] group hover:text-[var(--color-text)] transition-colors anim-fade-in';
+                    row.setAttribute('data-file', data.filename);
+                    row.innerHTML = `
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <span class="${tagClass} font-bold text-[9px] px-1 py-0.2 rounded shrink-0">${tagLabel}</span>
+                            <span class="truncate" title="${escapeHtml(data.filename)}">${escapeHtml(data.filename)}</span>
+                        </div>
+                        <button type="button" onclick="deleteUploadedDocument('${escapeHtml(data.filename)}', this)" title="Remove ${escapeHtml(data.filename)}" class="text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-500/10 p-0.5 rounded transition-all shrink-0" aria-label="Remove ${escapeHtml(data.filename)}">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    `;
+                    kbFileList.appendChild(row);
+                }
+
+                // 3. Update sidebar active topic and memory detail
+                if (data.initial_topic && sidebarActiveTopic) {
+                    sidebarActiveTopic.textContent = data.initial_topic;
+                }
+                if (sidebarMemoryDetail) {
+                    sidebarMemoryDetail.textContent = `Indexed "${data.filename}" (${data.chunks_added} chunks across ${data.pages_scanned} page(s)).`;
+                }
+
+                // 4. Add dynamic follow-up chips for the uploaded document
+                if (followupRow) {
+                    const cleanStem = data.filename.replace(/\.[^/.]+$/, '').replace(/[_\-]+/g, ' ');
+                    const newChips = [
+                        `Summarize key points in ${data.filename}`,
+                        `What are the main rules or terms in ${data.filename}?`,
+                        `What does ${cleanStem} specify?`
+                    ];
+                    followupRow.innerHTML = newChips.map((q) =>
+                        `<button type="button" class="suggest-chip text-xs shrink-0 whitespace-nowrap" data-q="${escapeHtml(q)}">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-teal)] shrink-0"></span>
+                            <span>${escapeHtml(q)}</span>
+                        </button>`
+                    ).join('');
+                    followupRow.querySelectorAll('[data-q]').forEach((btn) => {
+                        btn.addEventListener('click', () => sendPrompt(btn.getAttribute('data-q')));
+                    });
+                }
+
+                // 5. Insert system notification into chat
+                const notifDiv = document.createElement('div');
+                notifDiv.className = 'flex items-start gap-3';
+                notifDiv.innerHTML = `
+                    <div class="w-8 h-8 rounded-full avatar-ai flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">AI</div>
+                    <div class="msg-assistant rounded-[var(--radius-lg)] rounded-tl-md p-4 max-w-[90%] text-sm shadow-sm border border-[var(--color-teal)]/30 bg-[var(--color-teal-soft)]/20">
+                        <p class="font-semibold text-[var(--color-text)] flex items-center gap-2">
+                            <span>📄 Document Scanned & Grounded</span>
+                            <span class="badge text-[10px] font-mono">${data.chunks_added} Chunks</span>
+                        </p>
+                        <p class="text-[var(--color-text-secondary)] mt-1.5 text-xs leading-relaxed">
+                            I have scanned and indexed <strong>${escapeHtml(data.filename)}</strong> (${data.pages_scanned} page(s), ${data.chunks_added} chunks). You can now ask questions about this document across our multi-turn conversation, and I will cite its exact sections and pages.
+                        </p>
+                    </div>
+                `;
+                chatMessages.appendChild(notifDiv);
+                scrollToBottom();
+
+            } catch (err) {
+                alert(`Upload & scanning failed: ${err.message}`);
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.classList.remove('opacity-50');
+                uploadStatusLine.classList.add('hidden');
+                customDocInput.value = '';
+            }
+        }
+
+        async function deleteUploadedDocument(filename, btnElement) {
+            if (!filename) return;
+            if (!confirm(`Are you sure you want to remove "${filename}" from the knowledge base?`)) {
+                return;
+            }
+
+            if (btnElement) {
+                btnElement.disabled = true;
+                btnElement.classList.add('opacity-40');
+            }
+
+            try {
+                const csrftoken = getCookie('csrftoken');
+                const response = await fetch('/task2/api/delete_document/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({ filename: filename })
+                });
+
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'Failed to remove document.');
+                }
+
+                // 1. Remove element from sidebar list
+                const targetRow = btnElement ? btnElement.closest('[data-file]') : document.querySelector(`[data-file="${filename}"]`);
+                if (targetRow) {
+                    targetRow.remove();
+                }
+
+                // 2. Update chunk counters
+                const kbChunkBadge = document.getElementById('kbChunkBadge');
+                const headerChunksBadge = document.getElementById('headerChunksBadge');
+                if (kbChunkBadge) kbChunkBadge.textContent = `${data.total_chunks} Chunks`;
+                if (headerChunksBadge) headerChunksBadge.textContent = `${data.total_chunks} chunks`;
+
+                // 3. Update memory status text
+                if (sidebarMemoryDetail) {
+                    sidebarMemoryDetail.textContent = `Removed "${filename}" from knowledge base (${data.total_chunks} chunks remaining).`;
+                }
+
+                // 4. Append chat notification
+                const notifDiv = document.createElement('div');
+                notifDiv.className = 'flex items-start gap-3';
+                notifDiv.innerHTML = `
+                    <div class="w-8 h-8 rounded-full avatar-ai flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">AI</div>
+                    <div class="msg-assistant rounded-[var(--radius-lg)] rounded-tl-md p-3 max-w-[85%] text-xs shadow-sm border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5">
+                        <p class="font-medium text-[var(--color-text)] flex items-center gap-1.5">
+                            <span class="text-red-500 font-bold">✕</span>
+                            <span>Document Removed</span>
+                        </p>
+                        <p class="text-[var(--color-text-secondary)] mt-1 leading-relaxed">
+                            Removed <strong>${escapeHtml(filename)}</strong> from active knowledge grounding. Current knowledge base contains <strong>${data.total_chunks}</strong> indexed chunks.
+                        </p>
+                    </div>
+                `;
+                chatMessages.appendChild(notifDiv);
+                scrollToBottom();
+
+            } catch (err) {
+                alert(`Failed to remove document: ${err.message}`);
+                if (btnElement) {
+                    btnElement.disabled = false;
+                    btnElement.classList.remove('opacity-40');
+                }
+            }
         }
     </script>
 </body>

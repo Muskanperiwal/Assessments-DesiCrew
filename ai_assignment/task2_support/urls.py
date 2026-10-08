@@ -8,5 +8,8 @@ urlpatterns = [
     path('', views.chat_ui, name='chat_ui'),
     path('api/support_chat/', views.api_support_chat, name='api_support_chat'),
     path('api/chat/', views.api_support_chat, name='api_chat_alias'),
+    path('api/upload/', views.api_upload_document, name='api_upload_document'),
+    path('api/delete_document/', views.api_delete_document, name='api_delete_document'),
     path('api/reset/', views.api_reset, name='api_reset'),
 ]
+

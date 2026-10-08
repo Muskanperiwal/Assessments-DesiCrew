@@ -126,6 +126,7 @@ def chat_ui(request: HttpRequest):
         ),
         "turn_count": memory.turn_count,
         "active_topic": memory.active_topic or 'General Support',
+        "uploaded_files": RAG_ENGINE.get_uploaded_documents(),
     }
     return render(request, 'task2_support/index.html', context)
 
@@ -158,21 +159,25 @@ def api_support_chat(request: HttpRequest) -> JsonResponse:
     is_reminder = any(rem in user_message.lower() for rem in ['remind', 'repeat', 'again', 'what were', 'summarize'])
     scored_candidates = []
 
-    for chunk in relevant_chunks:
+    for rank, chunk in enumerate(relevant_chunks):
         blocks = extract_coherent_blocks(chunk.get("text", ""))
         for b in blocks:
-            if b.startswith(('#', '##')):
+            clean_b = re.sub(r'^#{1,6}\s*[^\n]*\n?', '', b).strip()
+            eval_block = clean_b if len(clean_b) > 20 else b
+            if not eval_block.strip():
                 continue
-            norm_fact = re.sub(r'[^a-zA-Z0-9]', '', b.lower()[:60])
+            norm_fact = re.sub(r'[^a-zA-Z0-9]', '', eval_block.lower()[:60])
             already = memory.has_fact_been_delivered(norm_fact)
-            raw_sc = score_block_relevance(user_message, b)
-            eff_sc = raw_sc
+            raw_sc = score_block_relevance(user_message, eval_block)
+            # Give semantic vector rank bonus (top vector matches from ChromaDB get priority)
+            rank_bonus = max(0.0, 4.0 - rank * 1.5)
+            eff_sc = raw_sc + rank_bonus
             if already and not is_reminder:
                 eff_sc -= 10.0
 
             scored_candidates.append({
                 'chunk': chunk,
-                'block': b,
+                'block': eval_block,
                 'norm_fact': norm_fact,
                 'raw_score': raw_sc,
                 'eff_score': eff_sc,
@@ -443,5 +448,55 @@ def api_reset(request: HttpRequest) -> JsonResponse:
     })
 
 
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_upload_document(request: HttpRequest) -> JsonResponse:
+    """Uploads, scans (PDF/Image OCR), and dynamically indexes a custom document into the RAG knowledge base."""
+    uploaded_file = request.FILES.get('file')
+    if not uploaded_file:
+        return JsonResponse({"error": "No file uploaded. Please attach a PDF or image file."}, status=400)
+
+    try:
+        file_bytes = uploaded_file.read()
+        filename = uploaded_file.name
+        content_type = uploaded_file.content_type or ''
+        result = RAG_ENGINE.index_custom_document(file_bytes, filename, content_type)
+        if not result.get("success"):
+            return JsonResponse({"error": result.get("error", "Failed to index document.")}, status=400)
+        return JsonResponse(result)
+    except Exception as e:
+        logger.error(f"Error in api_upload_document: {e}", exc_info=True)
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_delete_document(request: HttpRequest) -> JsonResponse:
+    """Safely deletes a user-uploaded custom document from the knowledge base."""
+    filename = ""
+    if request.content_type == "application/json" and request.body:
+        try:
+            data = json.loads(request.body)
+            filename = data.get("filename", "")
+        except Exception:
+            filename = ""
+    if not filename:
+        filename = request.POST.get("filename", "")
+
+    filename = (filename or "").strip()
+    if not filename:
+        return JsonResponse({"error": "Filename is required to remove a document."}, status=400)
+
+    try:
+        result = RAG_ENGINE.delete_custom_document(filename)
+        if not result.get("success"):
+            return JsonResponse({"error": result.get("error", "Failed to remove document.")}, status=400)
+        return JsonResponse(result)
+    except Exception as e:
+        logger.error(f"Error in api_delete_document: {e}", exc_info=True)
+        return JsonResponse({"error": str(e)}, status=500)
+
+
 api_chat = api_support_chat
+
 
