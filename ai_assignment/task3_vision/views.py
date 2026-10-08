@@ -9,8 +9,9 @@ import logging
 import mimetypes
 from pathlib import Path
 from django.conf import settings
-from django.http import FileResponse, Http404, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import render
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.views.decorators.http import require_http_methods
 
@@ -112,16 +113,54 @@ def _sample_dir() -> Path:
     return getattr(settings, "DATA_DIR", Path(settings.BASE_DIR) / "data") / "sample_documents"
 
 
+@xframe_options_sameorigin
 @require_http_methods(["GET"])
 def api_sample_file(request):
-    """Serve one sample image or PDF for the side-by-side preview."""
+    """Serve one sample image or rendered PDF for the side-by-side preview.
+
+    Decorated with @xframe_options_sameorigin to prevent browser clickjacking
+    iframe blocks, and optionally serves rendered Page 1 PNG for flawless,
+    high-res document rendering in standard image tags.
+    """
     name = Path(request.GET.get("name") or "").name
     root = _sample_dir().resolve()
     path = (root / name).resolve()
     if not name or root not in path.parents or not path.is_file():
         raise Http404("Sample not found")
+
+    want_render = request.GET.get("render") == "1"
+    is_pdf = path.suffix.lower() == ".pdf"
+
+    if is_pdf and (want_render or request.GET.get("raw") != "1"):
+        # 1. Check pre-rendered PNG in rendered/ directory
+        rendered_dir = root / "rendered"
+        stem = path.stem
+        candidates = [
+            rendered_dir / f"{stem}_page_1.png",
+            rendered_dir / f"{stem.replace(' ', '_')}_page_1.png",
+            rendered_dir / f"{stem}_page_0.png",
+            rendered_dir / f"{stem.replace(' ', '_')}_page_0.png",
+        ]
+        for c in candidates:
+            if c.is_file():
+                return FileResponse(c.open("rb"), content_type="image/png")
+
+        # 2. Resilient dynamic render with PyMuPDF
+        try:
+            import fitz
+            doc = fitz.open(str(path))
+            if len(doc) > 0:
+                pix = doc[0].get_pixmap(dpi=150)
+                png_bytes = pix.tobytes("png")
+                doc.close()
+                return HttpResponse(png_bytes, content_type="image/png")
+        except Exception as err:
+            logger.warning("Could not dynamically render PDF %s to PNG: %s", name, err)
+
     content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
-    return FileResponse(path.open("rb"), content_type=content_type)
+    response = FileResponse(path.open("rb"), content_type=content_type)
+    response["Content-Disposition"] = f'inline; filename="{path.name}"'
+    return response
 
 
 @csrf_exempt

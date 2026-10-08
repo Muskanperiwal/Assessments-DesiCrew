@@ -728,23 +728,43 @@
         }
         function stopStages() { clearInterval(stageTimer); }
 
+        function clearUploadZone() {
+            selectedFile = null;
+            if (fileInput) fileInput.value = '';
+            if (selectedFileInfo) selectedFileInfo.classList.add('hidden');
+        }
+
         function showSourcePreview(url, label, isPdf) {
             const box = document.getElementById('docPreview');
             const img = document.getElementById('previewImage');
             const frame = document.getElementById('previewFrame');
             const note = document.getElementById('previewNote');
             box.classList.remove('hidden');
-            note.textContent = label || '';
-            if (isPdf) {
+
+            const isSample = url.includes('/api/sample/');
+            const isPdfFile = /\.pdf$/i.test(label || '') || isPdf;
+
+            if (isSample && isPdfFile) {
+                // Sample PDF: rendered as a high-res image preview by the backend
+                img.classList.remove('hidden');
+                img.src = url;
+                frame.classList.add('hidden');
+                frame.removeAttribute('src');
+                const rawUrl = url.includes('&raw=1') ? url : (url.replace('&render=1', '').replace('?render=1', '') + '&raw=1');
+                note.innerHTML = `<span class="font-bold text-[var(--color-text)]">${escapeHtml(label || '')}</span> &bull; <span class="text-xs text-[var(--color-text-secondary)]">Page 1 Preview</span> &bull; <a href="${escapeHtml(rawUrl)}" target="_blank" class="text-teal-600 dark:text-teal-400 font-bold hover:underline">Open Full PDF ↗</a>`;
+            } else if (isPdf) {
+                // Uploaded custom PDF
                 img.classList.add('hidden');
                 img.removeAttribute('src');
                 frame.classList.remove('hidden');
                 frame.src = url;
+                note.innerHTML = `<span class="font-bold text-[var(--color-text)]">${escapeHtml(label || '')}</span> &bull; <span class="text-xs text-[var(--color-text-secondary)]">Uploaded PDF Document</span>`;
             } else {
                 frame.classList.add('hidden');
                 frame.removeAttribute('src');
                 img.classList.remove('hidden');
                 img.src = url;
+                note.textContent = label || '';
             }
         }
 
@@ -854,6 +874,7 @@
                 showError('Choose a sample, then run it.');
                 return;
             }
+            clearUploadZone();
             if (batchCache[name]) {
                 const isPdf = /\.pdf$/i.test(name);
                 showSourcePreview('/task3/api/sample/?name=' + encodeURIComponent(name), name, isPdf);
@@ -865,6 +886,7 @@
 
         async function runSampleTest(sampleName) {
             if (!sampleName) return;
+            clearUploadZone();
             const isPdf = /\.pdf$/i.test(sampleName);
             showSourcePreview('/task3/api/sample/?name=' + encodeURIComponent(sampleName), sampleName, isPdf);
             const formData = new FormData();
@@ -1031,6 +1053,7 @@
 
         function loadAndRunSample(filename) {
             if (!filename) return;
+            clearUploadZone();
             const sel = document.getElementById('sampleSelect');
             if (sel) sel.value = filename;
             if (batchCache[filename]) {
