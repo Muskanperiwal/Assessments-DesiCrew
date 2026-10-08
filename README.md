@@ -7,36 +7,50 @@ A unified, production-ready Django 5.x application housing three enterprise AI m
 
 ---
 
+## Local execution (development)
 
-Local execution (development)
-
-1. Activate your virtual environment:
+1. **Create and activate a virtual environment**:
    ```bash
+   python -m venv .venv
+
    # Windows:
    .\.venv\Scripts\activate
+
    # Linux/macOS:
    source .venv/bin/activate
    ```
-2. Navigate into the Django directory:
+
+2. **Install project dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Navigate into the Django directory**:
    ```bash
    cd ai_assignment
    ```
-3. Run migrations:
+
+4. **Run database migrations**:
    ```bash
    python manage.py migrate
    ```
-4. Start the development server:
+
+5. **Start the development server**:
    ```bash
    python manage.py runserver 8000
    ```
-5. Visit [http://127.0.0.1:8000/](http://127.0.0.1:8000/) in your browser.
+
+6. Visit [http://127.0.0.1:8000/](http://127.0.0.1:8000/) in your browser.
 
 ---
 
 ## Environment variables reference
 
+Create a `.env` file in the project root or configure the following environment variables:
+
 | Variable | Required | Description | Example |
 | :--- | :---: | :--- | :--- |
 | `DEBUG` | Optional | Set to `False` in production | `False` |
 | `SECRET_KEY` | Recommended | Django security secret key | `random-string` |
-| `GEMINI_API_KEY` | Recommanded | Google Gemini API key for Task 1 & Task 2 | `AIzaSy...` |
+| `GEMINI_API_KEY` | Recommended | Google Gemini API key for Task 1, Task 2 & Task 3 | `AIzaSy...` |
+| `GROQ_API_KEY` | Optional | Groq API key for Llama 3.3 70B fallback | `gsk_...` |
