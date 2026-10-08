@@ -221,26 +221,30 @@ Here is a representative extraction output for both statutory printed ID and han
 }
 ```
 
-### 4. Confidence Threshold Selection & Compliance Rationale
+### 4. Confidence Threshold Selection & Engineering Rationale
 
-* **Chosen Threshold:** **`0.85`** (with strict fallback triggers down to `0.80`).
-* **Engineering & Regulatory Rationale:**
-  1. **Financial & Compliance Liability:** Under RBI, NPCI (for NACH mandates), and IRDAI regulations, an erroneous bank account number or IFSC code results in failed automated debit settlements or unauthorized account charges. A single incorrect digit in a 10-digit PAN or 12-digit Aadhaar invalidates tax filing and anti-money laundering (AML) verification.
-  2. **Optimal Recall vs. Manual Review Overhead:** Setting the threshold at `0.85` ensures that 95%+ of unambiguous fields are processed straight-through without human touch (STP rate: ~82%), while isolating ambiguous cursive characters, crossed-out figures, or skewed writing for immediate human auditor triage.
+* **Chosen Threshold:** **`0.85 (85%)`**
+* **Decision Rules:**
+  - `Confidence >= 0.85` ➔ **PASS / Automated Straight-Through Processing**
+  - `Confidence < 0.85` ➔ **HUMAN REVIEW REQUIRED**
+  - `Missing Mandatory Field` ➔ **HUMAN REVIEW REQUIRED**
+* **Engineering Rationale:**
+  A confidence threshold of 0.85 was selected as an engineering threshold to balance automated straight-through processing throughput with extraction reliability. Fields below this threshold are sent for human review because incorrect extraction of identity identifiers, banking coordinates, insurance policies, or date-related fields carries significant downstream operational and compliance risks (such as dishonored mandate debits or invalidated KYC filings).
 
-### 5. Technical Note: Printed vs. Handwritten OCR & Failure Modes
+### 5. Technical Note: Printed vs. Handwritten Processing & Failure Modes
 
-#### A. Methodological Differences
-* **Printed Text:** Fixed typographical fonts, sharp edge contrast, horizontal baselines, and standardized layouts. Traditional OCR engines (Tesseract) or vision transformers achieve near 99.5% character-level accuracy.
-* **Handwritten Text:** High morphological variance, non-standard cursive letter connections, baseline drift, irregular pen pressure, and uneven character kerning across non-gridded Indian proposal forms. Our pipeline utilizes an end-to-end multimodal vision architecture (Google Gemini 2.5 Flash / Vision LLMs) with targeted prompt schemas, bypassing character-segmentation fragility.
+#### A. Methodological Differences & Implementation Details
+* **Unified Multimodal Architecture:** Rather than splitting the system across fragmented traditional OCR engines and handwriting segmentation models, both printed and handwritten documents are processed using the Google Gemini multimodal vision transformer directly on raw image pixels.
+* **Printed Documents:** High contrast, standardized fonts, and predictable structural anchor landmarks allow high-precision zero-shot extraction with confidence typically exceeding 0.95.
+* **Handwritten Documents:** The pipeline explicitly flags handwritten forms (`is_handwritten: true`). The vision model interprets non-gridded cursive strokes, check-box marks, and ink baseline drift directly from visual context. Strict field-level confidence scoring is applied, routing any uncertain field (< 0.85) to the Human-in-the-Loop review queue. Critical tokens — IFSC codes, bank account numbers, TIN/PAN, dates, and place names — receive priority prompt focus.
 
-#### B. Observed Failure Modes & Mitigations
-1. **Alphanumeric Ambiguity (0 vs. O, 1 vs. I/l):** In IFSC codes (e.g., `SBIN0227112`), the 5th character is strictly the digit `0`, not the letter `O`. 
-   - *Mitigation:* Schema-level regex validators enforce the standard Indian banking format (`^[A-Z]{4}0[A-Z0-9]{6}$`).
-2. **Cursive Baseline Drift & Overlap:** Handwritten applicant names frequently drift below pre-printed dotted lines or collide with form box borders.
-   - *Mitigation:* High-resolution multi-scale image cropping with contrast stretching prior to vision encoding.
-3. **Date Delimiter Ambiguity:** Slanted forward slashes (`/`) in handwritten dates (`26/04/2026`) can be confused with the digit `1`.
-   - *Mitigation:* Strict date parsing with normalization to `DD/MM/YYYY`.
+#### B. Observed Testing Results vs. Potential Failure Modes
+* **Observed Testing Results:** Across standardized testing of all 10 reference sample documents, the pipeline achieved 100% document classification accuracy and successfully extracted all 44 mandatory fields with confidence scores meeting or exceeding the 0.85 threshold. No classification or extraction failures occurred in the provided 10-document reference set.
+* **Potential Failure Modes (in unconstrained production):**
+  1. **Alphanumeric Ambiguity (0 vs. O, 1 vs. I/l):** In IFSC codes (e.g., `SBIN0227112`), the 5th character is strictly the digit `0`, not the letter `O`.
+  2. **Slanted Handwritten Dates:** Slanted forward slashes (`/`) in dates (`26/04/2026`) can be confused with the digit `1`, or day/month ordering can be ambiguous.
+  3. **Cursive Baseline Drift & Collision:** Handwritten text drifting below or colliding with pre-printed dotted guidelines.
+  4. **Low Contrast & Ink Smudges:** Faded ballpoint ink or compressed scan artifacts causing character dropouts.
 
 ### 6. Field-Level Accuracy Assessment Against Ground Truth
 

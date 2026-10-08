@@ -18,6 +18,7 @@ from .pipeline import (
     process_document,
     CONFIDENCE_THRESHOLD,
     THRESHOLD_RATIONALE,
+    DECISION_RULES,
     METHODOLOGY_NOTE,
     DOCUMENT_TYPES,
 )
@@ -153,6 +154,8 @@ def api_run_pipeline(request):
             "failed_documents": len(failures),
             "total_flagged_fields": len(all_flagged),
             "flagged_fields": all_flagged,
+            "needs_human_review": bool(all_flagged),
+            "decision_rules": DECISION_RULES
         },
         "methodology_note": METHODOLOGY_NOTE,
         "confidence_threshold": CONFIDENCE_THRESHOLD,
